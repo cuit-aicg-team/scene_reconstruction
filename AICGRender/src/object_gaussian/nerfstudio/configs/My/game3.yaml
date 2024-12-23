@@ -1,0 +1,15 @@
+inherit_from: configs/My/base.yaml
+data:
+  input_path: data/My/fusai_updata/003/out #输入数据路径
+  output_image_path: data/My/fusai_updata/output/003/render/ #输出结果路径
+  output_mesh_path: data/My/fusai_updata/output/003/mesh/
+  scene_name: result
+cam:  #intrinsic is different per scene in TUM
+  H: 2048 
+  W: 2448
+  fx: 2737.148719374272 
+  fy: 2737.2447510962947
+  cx: 1253.4514052766656
+  cy: 1023.9376981013062
+  # crop_edge: 50
+  #distortion: [0.2624, -0.9531, -0.0054, 0.0026, 1.1633]

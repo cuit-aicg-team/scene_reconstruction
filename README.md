@@ -1,3 +1,3 @@
 # Package
 
-This is a sdf studio package.
+This is a package.

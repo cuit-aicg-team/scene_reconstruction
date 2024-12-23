@@ -13,7 +13,7 @@ import os
 import logging
 import shutil
 
-from .outdoor_gaussian.scene.colmap_loader import read_extrinsics_text, read_intrinsics_text,read_extrinsics_binary, read_intrinsics_binary
+from .colmap_loader import read_extrinsics_text, read_intrinsics_text,read_extrinsics_binary, read_intrinsics_binary
 class ColmapConverter(object):
     def __init__(self, args=None):
         if args is None:

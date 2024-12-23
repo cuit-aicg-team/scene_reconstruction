@@ -58,6 +58,7 @@ DEFAULT_TIMEOUT = timedelta(minutes=30)
 torch.backends.cudnn.benchmark = True  # type: ignore
 torch.set_float32_matmul_precision("high")
 save_path="output"
+max_iteration = 30000
 
 def _find_free_port() -> str:
     """Finds a free port."""
@@ -230,9 +231,10 @@ def main(config: cfg.Config) -> None:
         config = yaml.load(config.trainer.load_config.read_text(), Loader=yaml.Loader)
 
     config.output_dir = save_path
+    config.trainer.max_num_iterations=max_iteration
     print("configt ff ",config.output_dir,save_path)
     # print and save config
-    config.print_to_terminal()
+    # config.print_to_terminal()
     config.save_config()
     launch(
         main_func=train_loop,
@@ -244,9 +246,9 @@ def main(config: cfg.Config) -> None:
     )
 
 
-def entrypoint(path_in,save_output_path):
-    global save_path
-    save_path = save_output_path
+def entrypoint(path_in,save_output_path,iteration):
+    globals()['save_path']=save_output_path
+    globals()['max_iteration']=iteration
     sys.argv = [
         "ns-train", "neus-facto",
         "--pipeline.model.sdf-field.use-grid-feature", "True",

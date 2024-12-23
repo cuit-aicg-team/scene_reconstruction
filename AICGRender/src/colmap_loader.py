@@ -172,9 +172,11 @@ def read_intrinsics_text(path):
                 width = int(elems[2])
                 height = int(elems[3])
                 params = np.array(tuple(map(float, elems[4:])))
-                cameras[camera_id] = Camera(id=camera_id, model=model,
-                                            width=width, height=height,
-                                            params=params)
+                cameras["id"] =camera_id
+                cameras["model"] =model
+                cameras["width"] =width
+                cameras["height"] =height
+                cameras["params"] =np.array(params)
     return cameras
 
 def read_extrinsics_binary(path_to_model_file):
@@ -232,12 +234,11 @@ def read_intrinsics_binary(path_to_model_file):
             num_params = CAMERA_MODEL_IDS[model_id].num_params
             params = read_next_bytes(fid, num_bytes=8*num_params,
                                      format_char_sequence="d"*num_params)
-            cameras[camera_id] = Camera(id=camera_id,
-                                        model=model_name,
-                                        width=width,
-                                        height=height,
-                                        params=np.array(params))
-        assert len(cameras) == num_cameras
+            cameras["id"] =camera_id
+            cameras["model"] =model_name
+            cameras["width"] =width
+            cameras["height"] =height
+            cameras["params"] =np.array(params)
     return cameras
 
 

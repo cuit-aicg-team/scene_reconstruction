@@ -198,8 +198,8 @@ def setup_event_writer(config: cfg.Config, log_dir: Path) -> None:
     """
     using_event_writer = False
     if config.is_wandb_enabled():
-        curr_writer = WandbWriter(log_dir=log_dir, experiment_name=config.experiment_name)
-        EVENT_WRITERS.append(curr_writer)
+        # curr_writer = WandbWriter(log_dir=log_dir, experiment_name=config.experiment_name)
+        # EVENT_WRITERS.append(curr_writer)
         using_event_writer = True
     if config.is_tensorboard_enabled():
         curr_writer = TensorboardWriter(log_dir=log_dir)

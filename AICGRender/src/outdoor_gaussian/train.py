@@ -31,7 +31,7 @@ except ImportError:
     TENSORBOARD_FOUND = False
 
 
-def save_mesh(mesh: o3d.geometry.TriangleMesh, save_path: str):
+def save_mesh(mesh: o3d.geometry.TriangleMesh, save_path: str,save_format: str = '.ply'):
     """
     将 Open3D 格式的网格保存为指定路径的文件，支持 .obj, .ply, .fbx 格式。
     :param mesh: open3d.geometry.TriangleMesh 类型的网格对象
@@ -41,11 +41,13 @@ def save_mesh(mesh: o3d.geometry.TriangleMesh, save_path: str):
     file_extension = os.path.splitext(save_path)[-1].lower()
 
     if not mesh.is_empty():
-        if file_extension == '.obj':
+        if save_format == '.obj':
+            save_path+='/model.obj'
             # 保存为 .obj 格式
             o3d.io.write_triangle_mesh(save_path, mesh)
             print(f"Mesh successfully saved as {save_path}")
-        elif file_extension == '.ply':
+        elif save_format == '.ply':
+            save_path+='/model.ply'
             # 保存为 .ply 格式
             o3d.io.write_triangle_mesh(save_path, mesh)
             print(f"Mesh successfully saved as {save_path}")
@@ -199,9 +201,9 @@ def training(dataset, opt, pipe, testing_iterations, saving_iterations, checkpoi
         sdf_trunc = 5.0 * voxel_size if args.sdf_trunc < 0 else args.sdf_trunc
         mesh = gaussExtractor.extract_mesh_bounded(voxel_size=voxel_size, sdf_trunc=sdf_trunc, depth_trunc=depth_trunc)
 
-    mesh_post = post_process_mesh(mesh, cluster_to_keep=args.num_cluster)
+    # mesh_post = post_process_mesh(mesh, cluster_to_keep=args.num_cluster)
     # o3d.io.write_triangle_mesh(save_mesh_path, mesh_post)
-    save_mesh(mesh_post, save_mesh_path)
+    save_mesh(mesh, save_mesh_path,args.save_format)
 
 
 def prepare_output_and_logger(args):
@@ -302,6 +304,7 @@ def run(point_path_in,save_output_path,iteration,save_format):
     parser.add_argument("--start_checkpoint", type=str, default = None)
 
 
+    parser.add_argument("--save_format", type=str, default = save_format)
     parser.add_argument("--save_mesh_path", type=str, default = save_output_path)
     parser.add_argument('--train_iterations', type=int, default=iteration)
     parser.add_argument("--voxel_size", default=-1.0, type=float, help='Mesh: voxel size for TSDF')

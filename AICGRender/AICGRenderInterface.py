@@ -466,13 +466,32 @@ class IndoorsceneReconstruction:
         return:
             mesh (trimesh.Trimesh): Mesh object
         '''
-        # if image_path_in is None:
-        #     image_path_in = self.__point_creator.outdir if self.__point_creator.outdir is not None else default_point_out_path
+        if image_path_in is None:
+            image_path_in = self.__point_creator.outdir if self.__point_creator.outdir is not None else default_point_out_path
     
         if save_output_path is None:
             save_output_path = default_indoor_model_out_path
-        NeuralRGBD.data_style_deal(input_path=image_path_in, output_path=default_deal_style_out_path, type="sensor_depth")
-        ObjectSReconstruction.entrypoint(path_in=default_deal_style_out_path, save_output_path=default_model_out_path)
+        
+        # if recon_data is None:
+        #     if not os.path.exists(default_point_out_path):
+        #         self.__point_creator.aicg_point_create(rgb_images_in=image_path_in, save_output_path=default_point_out_path)
+        #     cam_intrinsics = self.__point_creator.colmapConverter.getCameraIntrinsics(default_point_out_path)
+        #     cam_extrinsics = self.__point_creator.colmapConverter.getCameraExtrinsics(default_point_out_path)
+        #     cam_intrinsics["distorted"]=False
+        #     cam_intrinsics["k1"]=0.0
+        #     cam_intrinsics["k2"]=0.0
+        #     cam_intrinsics["p1"]=0.0
+        #     cam_intrinsics["p2"]=0.0
+        #     cam_intrinsics["k3"]=0.0
+        #     cam_intrinsics["depth_scale"]=1.0
+        # else :
+        #     cam_intrinsics = recon_data.__camera_intrinsics
+        #     cam_extrinsics = recon_data.__camera_extrinsics
+        # # print(f"cam_intrinsics {cam_intrinsics} cam_extrinsics {cam_extrinsics}")    
+        # print(f"cam_extrinsics {cam_extrinsics[1]} ")    
+        # IndoorReconstruction.run(image_path_in, depth_images_in, save_output_path,cam_intrinsics,cam_extrinsics)
+        # NeuralRGBD.data_style_deal(input_path=image_path_in, output_path=default_deal_style_out_path, type="sensor_depth")
+        ObjectSReconstruction.entrypoint(path_in=default_deal_style_out_path, save_output_path=default_model_out_path,iteration=iteration)
         ExtractMesh.entrypoint(default_model_out_path+"/config.yml",save_output_path)
         pass
 
@@ -534,7 +553,7 @@ class ObjectReconstruction:
         '''
         pass
 
-    def aicg_object_mesh_reconstruct(self, point_path_in=None, depth_images_in=None, save_output_path=None, iteration=7000,save_format='.ply', recon_data: ReconstructData = None):
+    def aicg_object_mesh_reconstruct(self, image_path_in=None, depth_images_in=None, save_output_path=None, iteration=7000,save_format='.ply', recon_data: ReconstructData = None):
         '''
         Generate a mesh
         Input:
@@ -549,7 +568,7 @@ class ObjectReconstruction:
         '''
         if save_output_path is None:
             save_output_path = default_object_model_out_path
-        NeuralRGBD.data_style_deal(input_path=point_path_in, output_path=default_deal_style_out_path, type="sensor_depth")
-        ObjectSReconstruction.entrypoint(path_in=default_deal_style_out_path, save_output_path=default_model_out_path)
+        # NeuralRGBD.data_style_deal(input_path=image_path_in, output_path=default_deal_style_out_path, type="sensor_depth")
+        ObjectSReconstruction.entrypoint(path_in=default_deal_style_out_path, save_output_path=default_model_out_path,iteration=iteration)
         ExtractMesh.entrypoint(default_model_out_path+"/config.yml",save_output_path)
         pass

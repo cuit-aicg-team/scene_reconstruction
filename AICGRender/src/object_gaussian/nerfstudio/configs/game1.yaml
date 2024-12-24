@@ -1,8 +1,8 @@
-inherit_from: nerfstudio/configs/My/base.yaml 
+inherit_from: AICGRender/src/object_gaussian/nerfstudio/configs/base.yaml 
 data:
-  input_path: data/My/fusai_updata/001/out #输入数据路径
-  output_image_path: data/My/fusai_updata/output/001/render/ #输出结果路径
-  output_mesh_path: data/My/fusai_updata/output/001/mesh/
+  input_path: input/001/out #输入数据路径
+  output_image_path: output/objectdoor/model/ #输出结果路径
+  output_mesh_path: output/objectdoor/model/
   scene_name: result
 cam:  #intrinsic is different per scene in TUM
   H: 2048 

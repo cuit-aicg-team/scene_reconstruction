@@ -17,6 +17,7 @@ import torch
 import os
 import requests
 from tqdm import tqdm
+import shutil
 
 import AICGRender.src.outdoor_gaussian.train as OutdoorReconstruction
 import AICGRender.src.object_gaussian.scripts.train as ObjectSReconstruction
@@ -36,10 +37,40 @@ default_objeect_render_out_path="./output/objectdoor/render"
 default_deal_style_out_path="./output/dealStyle"
 default_model_out_path="./output/dealStyle/out"
 
+def gamma_correction(img, gamma=2.2):
+    """
+    对图像应用伽马校正（用于8位图像）。
+    """
+    inv_gamma = 1.0 / gamma
+    lookup_table = np.array([((i / 255.0) ** inv_gamma) * 255 for i in range(256)]).astype("uint8")
+    return cv2.LUT(img, lookup_table)
+
+def rgb_to_grayscale(img):
+    """
+    将RGB图像转换为灰度图像
+    """
+    return cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
+
+def convert_8bit_rgb_to_16bit_grayscale(img, gamma=2.2):
+    """
+    将8位RGB图像转换为16位灰度图像。
+    """
+    # 对输入图像进行伽马校正
+    img_corrected = gamma_correction(img, gamma)
+    
+    # 将RGB图像转换为灰度图像
+    gray_img = rgb_to_grayscale(img_corrected)
+    
+    # 将灰度图像从8位转换为16位
+    gray_img_16bit = np.uint16(gray_img) * 257  # 8位到16位的转换
+    
+    return gray_img_16bit
+
 class ReconstructData:
-    def __init__(self, rgb_images=None, depth_images=None, camera_extrinsics=None, camera_intrinsics=None, point_cloud=None,other_param=None,reconstruct_model=None,**kwargs):
+    def __init__(self, rgb_images=None, depth_images=None, camera_extrinsics=None, camera_intrinsics=None, point_cloud=None,other_param=None,reconstruct_model=None,depth_scale =21.845,**kwargs):
         self.__rgb_images = rgb_images
         self.__depth_images = depth_images
+        self.__depth_scale = depth_scale
         self.__camera_extrinsics = camera_extrinsics
         self.__camera_intrinsics = camera_intrinsics
         self.__point_cloud = point_cloud
@@ -81,6 +112,9 @@ class ReconstructData:
     def set_reconstruct_model(self, reconstruct_model):
         self.__reconstruct_model = reconstruct_model
 
+    def set_depth_scale(self,depth_scale):
+        self.__depth_scale = depth_scale
+
     def set_param(self, key, value):
         self.__params[key] = value
 
@@ -104,6 +138,9 @@ class ReconstructData:
 
     def get_param(self, key):
         return self.__params.get(key)
+
+    def get_depth_scale(self):
+        return self.__depth_scale
 
     def __len__(self):
         return len(self.__rgb_images)
@@ -253,7 +290,7 @@ class DepthCreator:
             raw_image = cv2.imread(filename)
             
             depth = self.depth_anything.infer_image(raw_image, self.input_size)
-            
+            # print(depth.max()," =max , min= ",depth.min()," depth map mean = ",depth.mean())
             depth = (depth - depth.min()) / (depth.max() - depth.min())
             depth *= 255.0
             depth = depth.astype(np.uint8)
@@ -262,7 +299,9 @@ class DepthCreator:
                 depth = np.repeat(depth[..., np.newaxis], 3, axis=-1)
             else:
                 depth = (cmap(depth)[:, :, :3] * 255)[:, :, ::-1].astype(np.uint8)
-            
+
+            # gray_depth = convert_8bit_rgb_to_16bit_grayscale(depth)
+            # cv2.imwrite(os.path.join(self.outdir, os.path.splitext(os.path.basename(filename))[0] + '.png'), gray_depth)
             if self.pred_only:
                 cv2.imwrite(os.path.join(self.outdir, os.path.splitext(os.path.basename(filename))[0] + '.png'), depth)
             else:
@@ -568,7 +607,52 @@ class ObjectReconstruction:
         '''
         if save_output_path is None:
             save_output_path = default_object_model_out_path
-        # NeuralRGBD.data_style_deal(input_path=image_path_in, output_path=default_deal_style_out_path, type="sensor_depth")
+
+        if image_path_in is None:
+            print("Please input image path")
+            return   
+        # load color    
+        color_paths = sorted([image_path_in + "/" + f for f in os.listdir(image_path_in) if f.endswith('.png') or f.endswith('.jpg')]) 
+
+        # load depth
+        depth_paths = []
+        if depth_images_in is None:
+            if os.path.exists(default_depth_out_path):
+                 shutil.rmtree(default_depth_out_path)
+            self.__depth_creator.aicg_depth_create(rgb_images_in=image_path_in, save_output_path=default_depth_out_path,recon_data=recon_data)
+            depth_images_in = default_depth_out_path
+
+        
+        depth_paths = sorted([depth_images_in + "/" + f for f in os.listdir(depth_images_in) if f.endswith('.png')])
+
+        
+        camera_intrinsic =""
+        depth_scale = 21.845
+        poses = []
+        if recon_data is None:
+            if os.path.exists(default_point_out_path):
+                 shutil.rmtree(default_point_out_path)
+            self.__point_creator.aicg_point_create(rgb_images_in=image_path_in, save_output_path=default_point_out_path,recon_data=recon_data)
+            cam_intrinsics = self.__point_creator.colmapConverter.getCameraIntrinsics(default_point_out_path)
+            cam_extrinsics = self.__point_creator.colmapConverter.getCameraExtrinsics(default_point_out_path)
+            camera_intrinsic=cam_intrinsics
+            poses=cam_extrinsics
+        else:
+            depth_scale = recon_data.get_depth_scale()
+            if recon_data.get_camera_intrinsics() is None:
+                if os.path.exists(default_point_out_path):
+                    shutil.rmtree(default_point_out_path)
+                self.__point_creator.aicg_point_create(rgb_images_in=image_path_in, save_output_path=default_point_out_path,recon_data=recon_data)
+                cam_intrinsics = self.__point_creator.colmapConverter.getCameraIntrinsics(default_point_out_path)
+                cam_extrinsics = self.__point_creator.colmapConverter.getCameraExtrinsics(default_point_out_path)
+                camera_intrinsic=cam_intrinsics
+                poses=cam_extrinsics
+            else:
+                camera_intrinsic=recon_data.get_camera_intrinsics()
+            if recon_data.get_camera_extrinsics() is not None:
+                poses=recon_data.get_camera_extrinsics()
+            pass
+        NeuralRGBD.data_style_deal(color_paths=color_paths,depth_paths=depth_paths,poses=poses,camera_intrinsic=camera_intrinsic,output_path=default_deal_style_out_path,depth_scale=depth_scale)
         ObjectSReconstruction.entrypoint(path_in=default_deal_style_out_path, save_output_path=default_model_out_path,iteration=iteration)
         ExtractMesh.entrypoint(default_model_out_path+"/config.yml",save_output_path)
         pass

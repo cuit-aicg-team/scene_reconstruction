@@ -277,6 +277,15 @@ def entrypoint(path_in,save_output_path,iteration):
         "--skip_every_for_val_split", "30"
     ]
 
+    # sys.argv = [
+    #     "ns-train", "monosdf",
+    #     "--pipeline.model.sdf-field.inside-outside", "True",
+    #     "--vis", "wandb",
+    #     "sdfstudio-data",  # 数据路径
+    #     "--data", path_in,
+    #     "--include-mono-prior", "True"
+    # ]
+
     """Entrypoint for use with pyproject scripts."""
     # Choose a base configuration and override values.
     tyro.extras.set_accent_color("bright_yellow")

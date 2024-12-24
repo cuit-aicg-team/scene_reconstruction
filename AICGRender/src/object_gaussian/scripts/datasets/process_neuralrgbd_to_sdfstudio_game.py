@@ -65,33 +65,10 @@ def load_poses(posefile):
     return poses, valid
 
 # type : choices=["mono_prior", "sensor_depth"]
-def data_style_deal(input_path,output_path,type="sensor_depth"):
+def data_style_deal(color_paths,depth_paths,poses,camera_intrinsic,output_path,depth_scale,type="sensor_depth"):
     output_path = Path(output_path)  # "data/custom/scannet_scene0050_00"
-    input_path = Path(input_path)  # "/home/yuzh/Projects/datasets/scannet/scene0050_00"
 
     output_path.mkdir(parents=True, exist_ok=True)
-
-    # load color
-    color_path = os.path.join(input_path, 'rgb')
-    color_paths = sorted([color_path + "/" + f for f in os.listdir(color_path) if f.endswith('.png') or f.endswith('.jpg')])
-        
-    # load depth
-    depth_path = os.path.join(input_path, 'depth')
-    depth_paths = sorted([depth_path + "/" + f for f in os.listdir(depth_path) if f.endswith('.png')])
-
-
-    # load intrinsic
-    intrinsic_path = input_path / "cam_0.txt"
-    camera_intrinsic = np.loadtxt(intrinsic_path)
-
-    # load pose
-    poses = []
-    pose_path = os.path.join(input_path, 'pose_1')
-    pose_paths = sorted([pose_path + "/" + f for f in os.listdir(pose_path) if f.endswith('.txt')])
-    for pose_path in pose_paths:
-        c2w = read_rt_matrix(pose_path)
-        # print(c2w)
-        poses.append(c2w)
     # output_path = Path(args.output_path)  # "data/neural_rgbd/breakfast_room/"
     # input_path = Path(args.input_path)  # "data/neural_rgbd_data/breakfast_room/"
 
@@ -105,7 +82,7 @@ def data_style_deal(input_path,output_path,type="sensor_depth"):
     # depth_path = input_path / "depth_filtered"
     # depth_paths = sorted(glob.glob(os.path.join(depth_path, "*.png")), key=alphanum_key)
 
-    H, W = cv2.imread(depth_paths[0]).shape[:2]
+    H, W = cv2.imread(color_paths[0]).shape[:2]
     print(H, W)
 
     # # load intrinsic
@@ -217,8 +194,7 @@ def data_style_deal(input_path,output_path,type="sensor_depth"):
 
             depth_map = cv2.imread(depth_path, -1)
             # Convert depth to meters, then to "network units"
-            depth_shift = 21.845
-            depth_maps = (np.array(depth_map) / depth_shift).astype(np.float32)
+            depth_maps = (np.array(depth_map) / depth_scale).astype(np.float32)
             # print(depth_maps.max())
             depth_maps *= scale
 

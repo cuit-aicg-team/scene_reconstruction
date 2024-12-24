@@ -19,6 +19,8 @@ setuptools.setup(
     
     data_files=[
         ('AICGRender/src/indoor_gaussian/', ['AICGRender/src/indoor_gaussian/base_config.yaml','AICGRender/src/indoor_gaussian/indoor_re.yaml']),  
+         ('AICGRender/src/object_gaussian/nerfstudio/configs/', ['AICGRender/src/object_gaussian/nerfstudio/configs/base.yaml','AICGRender/src/object_gaussian/nerfstudio/configs/game1.yaml']),  
+        
     ],
     #  pip install  git+https://github.com/eriksandstroem/evaluate_3d_reconstruction_lib.git@9b3cc08be5440db9c375cc21e3bd65bb4a337db7
     #  pip install  git+https://github.com/VladimirYugay/simple-knn.git@c7e51a06a4cd84c25e769fee29ab391fe5d5ff8d

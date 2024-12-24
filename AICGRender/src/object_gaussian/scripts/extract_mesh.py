@@ -182,7 +182,8 @@ def entrypoint(default_config_path,save_output_path):
     sys.argv = [
         "ns-extract-mesh", 
         "--load-config", default_config_path,
-        "--output-path", save_output_path
+        "--output-path", save_output_path,
+        "--gaussian_config" ,"AICGRender/src/object_gaussian/nerfstudio/configs/game1.yaml",
     ]
     """Entrypoint for use with pyproject scripts."""
     tyro.extras.set_accent_color("bright_yellow")

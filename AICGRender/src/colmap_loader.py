@@ -13,6 +13,7 @@ import numpy as np
 import collections
 import struct
 
+from scipy.spatial.transform import Rotation as R
 CameraModel = collections.namedtuple(
     "CameraModel", ["model_id", "model_name", "num_params"])
 Camera = collections.namedtuple(
@@ -39,6 +40,26 @@ CAMERA_MODEL_IDS = dict([(camera_model.model_id, camera_model)
 CAMERA_MODEL_NAMES = dict([(camera_model.model_name, camera_model)
                            for camera_model in CAMERA_MODELS])
 
+def quaternion_to_rotation_matrix(quaternion):
+    rotation = R.from_quat(quaternion)
+    return rotation.as_matrix()
+
+def create_rt_matrix(rotation_quat, translation):
+    """
+    将四元数和平移量组合成 RT 矩阵 (4x4)
+    :param rotation_quat: 四元数 (x, y, z, w) 
+    :param translation: 平移向量 (tx, ty, tz)
+    :return: 4x4 变换矩阵
+    """
+    rotation_matrix = quaternion_to_rotation_matrix(rotation_quat)
+    
+    rt_matrix = np.eye(4)
+    
+    rt_matrix[:3, :3] = rotation_matrix
+    
+    rt_matrix[:3, 3] = translation
+    
+    return rt_matrix
 
 def qvec2rotmat(qvec):
     return np.array([
@@ -157,7 +178,7 @@ def read_intrinsics_text(path):
     """
     Taken from https://github.com/colmap/colmap/blob/dev/scripts/python/read_write_model.py
     """
-    cameras = {}
+    cameras = []
     with open(path, "r") as fid:
         while True:
             line = fid.readline()
@@ -172,11 +193,10 @@ def read_intrinsics_text(path):
                 width = int(elems[2])
                 height = int(elems[3])
                 params = np.array(tuple(map(float, elems[4:])))
-                cameras["id"] =camera_id
-                cameras["model"] =model
-                cameras["width"] =width
-                cameras["height"] =height
-                cameras["params"] =np.array(params)
+                r1 = [params[0], 0, params[2]]
+                r2 = [0, params[1], params[3]]
+                r3 = [0, 0, 1]
+                cameras = np.array([r1, r2, r3])
     return cameras
 
 def read_extrinsics_binary(path_to_model_file):
@@ -185,7 +205,7 @@ def read_extrinsics_binary(path_to_model_file):
         void Reconstruction::ReadImagesBinary(const std::string& path)
         void Reconstruction::WriteImagesBinary(const std::string& path)
     """
-    images = {}
+    images = []
     with open(path_to_model_file, "rb") as fid:
         num_reg_images = read_next_bytes(fid, 8, "Q")[0]
         for _ in range(num_reg_images):
@@ -207,10 +227,9 @@ def read_extrinsics_binary(path_to_model_file):
             xys = np.column_stack([tuple(map(float, x_y_id_s[0::3])),
                                    tuple(map(float, x_y_id_s[1::3]))])
             point3D_ids = np.array(tuple(map(int, x_y_id_s[2::3])))
-            images[image_id] = Image(
-                id=image_id, qvec=qvec, tvec=tvec,
-                camera_id=camera_id, name=image_name,
-                xys=xys, point3D_ids=point3D_ids)
+            # 创建一个4x4的矩阵
+            pose = create_rt_matrix(qvec, tvec)
+            images.append(pose)
     return images
 
 
@@ -234,11 +253,10 @@ def read_intrinsics_binary(path_to_model_file):
             num_params = CAMERA_MODEL_IDS[model_id].num_params
             params = read_next_bytes(fid, num_bytes=8*num_params,
                                      format_char_sequence="d"*num_params)
-            cameras["id"] =camera_id
-            cameras["model"] =model_name
-            cameras["width"] =width
-            cameras["height"] =height
-            cameras["params"] =np.array(params)
+            r1 = [params[0], 0, params[2]]
+            r2 = [0, params[1], params[3]]
+            r3 = [0, 0, 1]
+            cameras = np.array([r1, r2, r3])
     return cameras
 
 
@@ -246,7 +264,7 @@ def read_extrinsics_text(path):
     """
     Taken from https://github.com/colmap/colmap/blob/dev/scripts/python/read_write_model.py
     """
-    images = {}
+    images =[]
     with open(path, "r") as fid:
         while True:
             line = fid.readline()
@@ -264,10 +282,8 @@ def read_extrinsics_text(path):
                 xys = np.column_stack([tuple(map(float, elems[0::3])),
                                        tuple(map(float, elems[1::3]))])
                 point3D_ids = np.array(tuple(map(int, elems[2::3])))
-                images[image_id] = Image(
-                    id=image_id, qvec=qvec, tvec=tvec,
-                    camera_id=camera_id, name=image_name,
-                    xys=xys, point3D_ids=point3D_ids)
+                pose = create_rt_matrix(qvec, tvec)
+                images.append(pose)
     return images
 
 

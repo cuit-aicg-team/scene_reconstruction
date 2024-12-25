@@ -257,7 +257,7 @@ class GaussianExtractor(object):
         print(f"Computing sdf gird resolution {N} x {N} x {N}")
         print(f"Define the voxel_size as {voxel_size}")
         sdf_function = lambda x: compute_unbounded_tsdf(x, inv_contraction, voxel_size)
-        from utils.mcube_utils import marching_cubes_with_contraction
+        from ..utils.mcube_utils import marching_cubes_with_contraction
         R = contract(normalize(self.gaussians.get_xyz)).norm(dim=-1).cpu().numpy()
         R = np.quantile(R, q=0.95)
         R = min(R+0.01, 1.9)

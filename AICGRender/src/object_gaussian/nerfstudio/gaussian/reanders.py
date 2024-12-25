@@ -79,7 +79,7 @@ class Reanders(object):
         #------------------------------------------GS模型训练----------------------------------------------#
         refined_merged_gaussian_model = refine_global_map(merged_cloud, training_frames, 50000,self.dataset.dataset_path,self.dataset.output_image_path,self.dataset)
 
-        self.out_new_rgb(self.dataset.dataset_path,self.dataset.output_image_path, refined_merged_gaussian_model)
+        # self.out_new_rgb(self.dataset.dataset_path,self.dataset.output_image_path, refined_merged_gaussian_model)
         voxel_size = 0.01
         pcd =merged_cloud
 

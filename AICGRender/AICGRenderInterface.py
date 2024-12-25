@@ -178,8 +178,11 @@ class PointCreator:
         '''
         if rgb_images_in is None:
             raise ValueError("RGB images must be provided")
+        
         if save_output_path is None:
             save_output_path = default_point_out_path
+            if os.path.exists(default_point_out_path):
+                 shutil.rmtree(default_point_out_path)
 
         args = {"source_path":rgb_images_in,"save_path":save_output_path}
         self.outdir = save_output_path
@@ -413,7 +416,7 @@ class OutdoorsceneReconstruction:
         '''
         pass
 
-    def aicg_outdoor_mesh_reconstruct(self, point_path_in=None, depth_images_in=None, save_output_path=None, iteration=200,save_format='.ply', recon_data: ReconstructData = None):
+    def aicg_outdoor_mesh_reconstruct(self, point_path_in=None, depth_images_in=None, save_output_path=None, iteration=7000,save_format='.ply', recon_data: ReconstructData = None):
         '''
         Generate a mesh
         Input:
@@ -652,7 +655,11 @@ class ObjectReconstruction:
             if recon_data.get_camera_extrinsics() is not None:
                 poses=recon_data.get_camera_extrinsics()
             pass
-        NeuralRGBD.data_style_deal(color_paths=color_paths,depth_paths=depth_paths,poses=poses,camera_intrinsic=camera_intrinsic,output_path=default_deal_style_out_path,depth_scale=depth_scale)
-        ObjectSReconstruction.entrypoint(path_in=default_deal_style_out_path, save_output_path=default_model_out_path,iteration=iteration)
-        ExtractMesh.entrypoint(default_model_out_path+"/config.yml",save_output_path)
+
+        # if os.path.exists(default_deal_style_out_path):
+        #     shutil.rmtree(default_deal_style_out_path)
+        # NeuralRGBD.data_style_deal(color_paths=color_paths,depth_paths=depth_paths,poses=poses,camera_intrinsic=camera_intrinsic,output_path=default_deal_style_out_path,depth_scale=depth_scale)
+        # ObjectSReconstruction.entrypoint(path_in=default_deal_style_out_path, save_output_path=default_model_out_path,iteration=iteration)
+        print("save_output_path",save_output_path)
+        ExtractMesh.entrypoint(default_model_out_path+"/config.yml",save_output_path,0)
         pass

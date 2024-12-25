@@ -34,7 +34,7 @@ class PipelineParams():
 
 class OptimizationParams():
     def __init__(self):
-        self.iterations = 7000
+        self.iterations = 700
         self.position_lr_init = 0.00016
         self.position_lr_final = 0.0000016
         self.position_lr_delay_mult = 0.01

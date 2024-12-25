@@ -27,7 +27,8 @@ def get_surface_sliding(
     output_path: Path = Path("meshes"),
     simplify_mesh=True,
     gt = None,
-    gaussian_config = None
+    gaussian_config = None,
+    sence_type = 0
 ):
     assert resolution % 512 == 0
     if coarse_mask is not None:
@@ -163,13 +164,21 @@ def get_surface_sliding(
         timestamp = time.time()  
         dt_object = datetime.fromtimestamp(timestamp)  
         formatted_time = dt_object.strftime('%Y_%m_%d_%H_%M_%S')  
-        if gaussian_config is not None:
-            config = load_config(gaussian_config)
-            output_path = Path(config["data"]["output_mesh_path"])
-            os.makedirs(str(output_path), exist_ok=True)
-            print(output_path)
-        os.makedirs(str(output_path), exist_ok=True)
-        filename = str(output_path)+f"/mesh_{formatted_time}.ply"
+        # if gaussian_config is not None:
+        #     config = load_config(gaussian_config)
+        #     output_path = Path(config["data"]["output_mesh_path"])
+        #     os.makedirs(str(output_path), exist_ok=True)
+        #     print(output_path)
+        file_extension = os.path.splitext(output_path)[-1].lower()
+        print(file_extension,output_path)
+        if file_extension == ".ply":
+          filename = str(output_path)
+        else:
+          os.makedirs(str(output_path), exist_ok=True)
+          if sence_type ==0:
+            filename = str(output_path)+f"/object_mesh_{formatted_time}.ply"
+          else:
+            filename = str(output_path)+f"/object_mesh_{formatted_time}.ply"
         new_mesh = combined
         if gt is not None:
             # print(filename_simplify)
@@ -190,8 +199,9 @@ def get_surface_sliding(
 
         new_mesh.export(filename)   
         if gaussian_config is not None:
-            reanders = Reanders(gaussian_config)
-            reanders.run_global_map_create(new_mesh)
+            pass
+            # reanders = Reanders(gaussian_config)
+            # reanders.run_global_map_create(new_mesh)
 
        
 

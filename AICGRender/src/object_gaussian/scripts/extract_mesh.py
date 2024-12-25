@@ -36,6 +36,7 @@ class ExtractMesh:
     # Path to config YAML file.
     load_config: Path
     gaussian_config: Path = None
+    sence_type : int = 0
     # Marching cube resolution.
     resolution: int = 1024
     # Name of the output file.
@@ -174,15 +175,17 @@ class ExtractMesh:
                 output_path=self.output_path,
                 simplify_mesh=self.simplify_mesh,
                 gt=worldtogt,
-                gaussian_config=self.gaussian_config
+                gaussian_config=self.gaussian_config,
+                sence_type=self.sence_type
             )
 
 
-def entrypoint(default_config_path,save_output_path):
+def entrypoint(default_config_path,save_output_path,sence_type):
     sys.argv = [
         "ns-extract-mesh", 
         "--load-config", default_config_path,
         "--output-path", save_output_path,
+        "--sence_type",str(sence_type),# 0:object 1:indoor
         "--gaussian_config" ,"AICGRender/src/object_gaussian/nerfstudio/configs/game1.yaml",
     ]
     """Entrypoint for use with pyproject scripts."""

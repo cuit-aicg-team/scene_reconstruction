@@ -19,6 +19,8 @@ from .utils.loss_utils import l1_loss, ssim
 from .scene import Scene, GaussianModel,render
 from .utils.general_utils import safe_state
 import uuid
+from datetime import datetime  
+import time  
 from tqdm import tqdm
 from .utils.image_utils import psnr, render_net_image
 from argparse import ArgumentParser, Namespace
@@ -39,15 +41,21 @@ def save_mesh(mesh: o3d.geometry.TriangleMesh, save_path: str,save_format: str =
     """
     # 获取文件扩展名
     file_extension = os.path.splitext(save_path)[-1].lower()
-
+    timestamp = time.time()  
+    dt_object = datetime.fromtimestamp(timestamp)  
+    formatted_time = dt_object.strftime('%Y_%m_%d_%H_%M_%S')  
     if not mesh.is_empty():
         if save_format == '.obj':
-            save_path+='/model.obj'
+            if file_extension != '.obj':
+                os.makedirs(save_path, exist_ok=True)
+                save_path += "/outdoor_mesh_"+formatted_time+'.obj'
             # 保存为 .obj 格式
             o3d.io.write_triangle_mesh(save_path, mesh)
             print(f"Mesh successfully saved as {save_path}")
         elif save_format == '.ply':
-            save_path+='/model.ply'
+            if file_extension != '.ply':
+                os.makedirs(save_path, exist_ok=True)
+                save_path += "/outdoor_mesh_"+formatted_time+'.ply'
             # 保存为 .ply 格式
             o3d.io.write_triangle_mesh(save_path, mesh)
             print(f"Mesh successfully saved as {save_path}")
@@ -311,7 +319,7 @@ def run(point_path_in,save_output_path,iteration,save_format):
     parser.add_argument("--depth_trunc", default=-1.0, type=float, help='Mesh: Max depth range for TSDF')
     parser.add_argument("--sdf_trunc", default=-1.0, type=float, help='Mesh: truncation value for TSDF')
     parser.add_argument("--num_cluster", default=50, type=int, help='Mesh: number of connected clusters to export')
-    parser.add_argument("--unbounded", action="store_true", help='Mesh: using unbounded mode for meshing')
+    parser.add_argument("--unbounded", type=bool,default=True, help='Mesh: using unbounded mode for meshing')
     parser.add_argument("--mesh_res", default=1024, type=int, help='Mesh: resolution for unbounded mesh extraction')
     args = parser.parse_args(sys.argv[1:])
     args.save_iterations.append(args.iterations)

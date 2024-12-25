@@ -315,7 +315,7 @@ def refine_global_map(pt_cloud: o3d.geometry.PointCloud, training_frames: list, 
             if iteration % 500 == 0:
                 outpath = output.joinpath(iteration.__str__())
                 os.makedirs(outpath,exist_ok=True)
-                out_new_rgb(dataset, input, outpath, gaussians,iteration,pipe,background)
+                # out_new_rgb(dataset, input, outpath, gaussians,iteration,pipe,background)
 
             iter_start.record()
             gaussians.update_learning_rate(iteration)

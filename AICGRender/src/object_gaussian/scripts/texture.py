@@ -18,6 +18,8 @@ from typing_extensions import Literal
 from ..nerfstudio.exporter import texture_utils
 from ..nerfstudio.exporter.exporter_utils import get_mesh_from_filename
 from ..nerfstudio.utils.eval_utils import eval_setup
+import numpy as np  
+import os  
 
 CONSOLE = Console(width=120)
 
@@ -42,7 +44,43 @@ class TextureMesh:
     """If using xatlas for unwrapping, the pixels per side of the texture image."""
     target_num_faces: Optional[int] = 50000
     """Target number of faces for the mesh to texture."""
+    def getGt(self):
+        original_path = str(self.load_config)
+        new_path = original_path.replace('config.yml','gt.txt')  
+        matrix = []  
+        if os.path.exists(new_path):  
+            with open(new_path, 'r') as file:  
+                lines = file.readlines()  
+                index = 0
+                numbers =[]
+                for line in lines:  
+                    # 去除每行末尾的换行符，并按空格分割字符串为列表  
+                    number_str = line.strip().split()  
+                    
+                    # 将字符串列表转换为整数列表  
+                    number = float(number_str[-1])
+                    numbers.append(number)
+                    # 确保每行有4个数字  
+                    if (index+1)%4==0:
+                       matrix.append(numbers)  
+                       numbers =[]
+                    index+=1   
+                   
+                # 检查矩阵是否完整  
+                if len(matrix) == 4:  
+                    # 矩阵已经是4x4的，可以直接使用  
+                    print("Matrix:")  
+                    for row in matrix:  
+                        print(row)  
+                else:  
+                    print("Error: The file does not contain exactly 16 numbers (4x4 matrix).")
+                    return None  
+        else:  
+            print(f"File {new_path} does not exist.")
+            return None
 
+        return np.array(matrix)  
+    
     def main(self) -> None:
         """Export textured mesh"""
         # pylint: disable=too-many-statements

@@ -45,25 +45,12 @@ def save_mesh(mesh: o3d.geometry.TriangleMesh, save_path: str,save_format: str =
     dt_object = datetime.fromtimestamp(timestamp)  
     formatted_time = dt_object.strftime('%Y_%m_%d_%H_%M_%S')  
     if not mesh.is_empty():
-        if save_format == '.obj':
-            if file_extension != '.obj':
-                os.makedirs(save_path, exist_ok=True)
-                save_path += "/outdoor_mesh_"+formatted_time+'.obj'
-            # 保存为 .obj 格式
-            o3d.io.write_triangle_mesh(save_path, mesh)
-            print(f"Mesh successfully saved as {save_path}")
-        elif save_format == '.ply':
-            if file_extension != '.ply':
-                os.makedirs(save_path, exist_ok=True)
-                save_path += "/outdoor_mesh_"+formatted_time+'.ply'
-            # 保存为 .ply 格式
-            o3d.io.write_triangle_mesh(save_path, mesh)
-            print(f"Mesh successfully saved as {save_path}")
-        # elif file_extension == '.fbx':
-            # mesh.export(save_path)
-            # print(f"Mesh successfully saved as {save_path}")
-        else:
-            print("Unsupported file format. Please use .obj, .ply, or .fbx.")
+        if not (file_extension == '.obj' or file_extension == '.ply'):
+            os.makedirs(save_path, exist_ok=True)
+            save_path += "/outdoor_mesh_"+formatted_time+'.ply'
+        # 保存为 .obj 格式
+        o3d.io.write_triangle_mesh(save_path, mesh)
+        print(f"Mesh successfully saved as {save_path}")
     else:
         print("The mesh is empty and cannot be saved.")
 
@@ -279,7 +266,7 @@ def prepare_output_and_logger(args_s):
         args_s.model_path = model_path2
 
     # Set up output folder
-    print("Output folder: {}".format(args_s.model_path))
+    # print("Output folder: {}".format(args_s.model_path))
     os.makedirs(args_s.model_path, exist_ok = True)
     with open(os.path.join(args_s.model_path, "cfg_args"), 'w') as cfg_log_f:
         cfg_log_f.write(str(Namespace(**vars(args_s))))

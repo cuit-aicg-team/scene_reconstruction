@@ -171,7 +171,7 @@ def get_surface_sliding(
         #     print(output_path)
         file_extension = os.path.splitext(output_path)[-1].lower()
         print(file_extension,output_path)
-        if file_extension == ".ply":
+        if file_extension == ".ply" or file_extension == ".obj":
           filename = str(output_path)
         else:
           os.makedirs(str(output_path), exist_ok=True)
@@ -180,22 +180,22 @@ def get_surface_sliding(
           else:
             filename = str(output_path)+f"/indoor_mesh_{formatted_time}.ply"
         new_mesh = combined
-        if gt is not None:
-            # print(filename_simplify)
-            combined.merge_vertices(digits_vertex=6)
-            print("simply mesh filename ",filename)
+        # if gt is not None:
+        #     # print(filename_simplify)
+        #     combined.merge_vertices(digits_vertex=6)
+        #     print("simply mesh filename ",filename)
 
-            # 网格的顶点需要是齐次坐标形式（添加一列1）  
-            homogeneous_vertices = np.hstack([combined.vertices, np.ones((combined.vertices.shape[0], 1))])  
+        #     # 网格的顶点需要是齐次坐标形式（添加一列1）  
+        #     homogeneous_vertices = np.hstack([combined.vertices, np.ones((combined.vertices.shape[0], 1))])  
             
-            # 应用缩放矩阵  
-            scaled_homogeneous_vertices = np.dot(homogeneous_vertices, gt.T)  # 注意使用转置，因为dot是按列进行的  
+        #     # 应用缩放矩阵  
+        #     scaled_homogeneous_vertices = np.dot(homogeneous_vertices, gt.T)  # 注意使用转置，因为dot是按列进行的  
             
-            # 提取缩放后的顶点（去掉齐次坐标的最后一列）  
-            scaled_vertices = scaled_homogeneous_vertices[:, :-1]  
+        #     # 提取缩放后的顶点（去掉齐次坐标的最后一列）  
+        #     scaled_vertices = scaled_homogeneous_vertices[:, :-1]  
             
-            # 创建一个新的Trimesh对象  
-            new_mesh = trimesh.Trimesh(vertices=scaled_vertices, faces=combined.faces)
+        #     # 创建一个新的Trimesh对象  
+        #     new_mesh = trimesh.Trimesh(vertices=scaled_vertices, faces=combined.faces)
 
         new_mesh.export(filename)   
         if gaussian_config is not None:

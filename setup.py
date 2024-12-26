@@ -5,7 +5,7 @@ with open("README.md", "r") as fh:
 
 setuptools.setup(
     name="aicg-model-generation",
-    version="0.2.8",
+    version="0.3.0",
     author="aicg",
     author_email="aicg@qq.com",
     description="new sdf package",

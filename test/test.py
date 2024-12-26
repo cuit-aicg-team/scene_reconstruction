@@ -41,7 +41,7 @@ def testIndoor():
     recon_data.set_camera_intrinsics(camera_intrinsic)
     recon_data.set_depth_scale(1000)
     indoorsceneReconstruction = IndoorsceneReconstruction()
-    indoorsceneReconstruction.aicg_indoor_mesh_reconstruct(image_path_in = root+"images",depth_images_in = root+"depth" ,iteration=30000,recon_data=recon_data)
+    indoorsceneReconstruction.aicg_indoor_mesh_reconstruct(image_path_in = root+"images",depth_images_in = root+"depth" ,save_output_path= "output/indoor/out.ply",iteration=500,recon_data=recon_data)
     pass
 
 
@@ -65,20 +65,20 @@ def testObject():
     recon_data.set_depth_scale(21.845)
     
     objectReconstruction = ObjectReconstruction()
-    objectReconstruction.aicg_object_mesh_reconstruct(image_path_in = root+"rgb",depth_images_in = root+"depth" ,iteration=2000,recon_data=recon_data)
+    objectReconstruction.aicg_object_mesh_reconstruct(image_path_in = root+"rgb",depth_images_in = root+"depth" ,save_output_path= "output/object/out.ply",iteration=200,recon_data=recon_data)
     pass
 
 def testOutdoor():
   outdoorsceneReconstruction = OutdoorsceneReconstruction()
-  outdoorsceneReconstruction.call_class_aicg_point_create("/home/guowenwu/workspace/packaging_tutorial/input/rgb","output/points")
+#   outdoorsceneReconstruction.call_class_aicg_point_create("input/rgb","output/points")
 #   outdoorsceneReconstruction.call_class_aicg_depth_create("/home/guowenwu/workspace/packaging_tutorial/input/rgb","output/depth")
     # 重建
-  outdoorsceneReconstruction.aicg_outdoor_mesh_reconstruct("output/points",iteration=2000)
+  outdoorsceneReconstruction.aicg_outdoor_mesh_reconstruct("output/points",save_output_path="output/outdoor/out.ply",iteration=200)
   # 新视角渲染
 #   outdoorsceneReconstruction.aicg_outdoor_render_images(point_path_in = "input/garden")
   pass
 
 
 # testIndoor()
-testObject()
 # testOutdoor()
+testObject()

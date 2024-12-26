@@ -69,16 +69,18 @@ def testObject():
     pass
 
 def testOutdoor():
-  outdoorsceneReconstruction = OutdoorsceneReconstruction()
-#   outdoorsceneReconstruction.call_class_aicg_point_create("input/rgb","output/points")
+    outdoorsceneReconstruction = OutdoorsceneReconstruction()
+  # outdoorsceneReconstruction.call_class_aicg_point_create("/home/guowenwu/workspace/packaging_tutorial/input/rgb","output/points")
 #   outdoorsceneReconstruction.call_class_aicg_depth_create("/home/guowenwu/workspace/packaging_tutorial/input/rgb","output/depth")
     # 重建
-  outdoorsceneReconstruction.aicg_outdoor_mesh_reconstruct("output/points",save_output_path="output/outdoor/out.ply",iteration=200)
+    outdoorsceneReconstruction.aicg_outdoor_mesh_reconstruct("/home/guowenwu/workspace/packaging_tutorial/input/garden",
+                                                      save_output_path='output/gs_outdoor_test/one1226/extramesh.ply',iteration=7000)
   # 新视角渲染
 #   outdoorsceneReconstruction.aicg_outdoor_render_images(point_path_in = "input/garden")
-  pass
+    pass
 
 
 # testIndoor()
-# testOutdoor()
-testObject()
+# testObject()
+testOutdoor()
+

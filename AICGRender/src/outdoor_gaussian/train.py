@@ -66,149 +66,130 @@ def training(dataset, opt, pipe, testing_iterations, saving_iterations, checkpoi
     first_iter = 0
     tb_writer = prepare_output_and_logger(dataset)
 
-    gaussians = GaussianModel(dataset.sh_degree)
-    scene = Scene(dataset, gaussians)
-    gaussians.training_setup(opt)
-    if checkpoint:
-        (model_params, first_iter) = torch.load(checkpoint)
-        gaussians.restore(model_params, opt)
+    if not args.skip_train:
+        gaussians = GaussianModel(dataset.sh_degree)
+        scene = Scene(dataset, gaussians)
+        gaussians.training_setup(opt)
+        if checkpoint:
+            (model_params, first_iter) = torch.load(checkpoint)
+            gaussians.restore(model_params, opt)
 
-    bg_color = [1, 1, 1] if dataset.white_background else [0, 0, 0]
-    background = torch.tensor(bg_color, dtype=torch.float32, device="cuda")
+        bg_color = [1, 1, 1] if dataset.white_background else [0, 0, 0]
+        background = torch.tensor(bg_color, dtype=torch.float32, device="cuda")
 
-    iter_start = torch.cuda.Event(enable_timing = True)
-    iter_end = torch.cuda.Event(enable_timing = True)
+        iter_start = torch.cuda.Event(enable_timing = True)
+        iter_end = torch.cuda.Event(enable_timing = True)
 
-    viewpoint_stack = None
-    ema_loss_for_log = 0.0
-    ema_dist_for_log = 0.0
-    ema_normal_for_log = 0.0
+        viewpoint_stack = None
+        ema_loss_for_log = 0.0
+        ema_dist_for_log = 0.0
+        ema_normal_for_log = 0.0
 
-    progress_bar = tqdm(range(first_iter, opt.iterations), desc="Training progress")
-    first_iter += 1
-    for iteration in range(first_iter, opt.iterations + 1):        
+        progress_bar = tqdm(range(first_iter, opt.iterations), desc="Training progress")
+        first_iter += 1
+        for iteration in range(first_iter, opt.iterations + 1):
 
-        iter_start.record()
+            iter_start.record()
 
-        gaussians.update_learning_rate(iteration)
+            gaussians.update_learning_rate(iteration)
 
-        # Every 1000 its we increase the levels of SH up to a maximum degree
-        if iteration % 1000 == 0:
-            gaussians.oneupSHdegree()
+            # Every 1000 its we increase the levels of SH up to a maximum degree
+            if iteration % 1000 == 0:
+                gaussians.oneupSHdegree()
 
-        # Pick a random Camera
-        if not viewpoint_stack:
-            viewpoint_stack = scene.getTrainCameras().copy()
-        viewpoint_cam = viewpoint_stack.pop(randint(0, len(viewpoint_stack)-1))
-        
-        render_pkg = render(viewpoint_cam, gaussians, pipe, background)
-        image, viewspace_point_tensor, visibility_filter, radii = render_pkg["render"], render_pkg["viewspace_points"], render_pkg["visibility_filter"], render_pkg["radii"]
-        
-        gt_image = viewpoint_cam.original_image.cuda()
-        Ll1 = l1_loss(image, gt_image)
-        loss = (1.0 - opt.lambda_dssim) * Ll1 + opt.lambda_dssim * (1.0 - ssim(image, gt_image))
-        
-        # regularization
-        lambda_normal = opt.lambda_normal if iteration > 7000 else 0.0
-        lambda_dist = opt.lambda_dist if iteration > 3000 else 0.0
+            # Pick a random Camera
+            if not viewpoint_stack:
+                viewpoint_stack = scene.getTrainCameras().copy()
+            viewpoint_cam = viewpoint_stack.pop(randint(0, len(viewpoint_stack)-1))
 
-        rend_dist = render_pkg["rend_dist"]
-        rend_normal  = render_pkg['rend_normal']
-        surf_normal = render_pkg['surf_normal']
-        normal_error = (1 - (rend_normal * surf_normal).sum(dim=0))[None]
-        normal_loss = lambda_normal * (normal_error).mean()
-        dist_loss = lambda_dist * (rend_dist).mean()
+            render_pkg = render(viewpoint_cam, gaussians, pipe, background)
+            image, viewspace_point_tensor, visibility_filter, radii = render_pkg["render"], render_pkg["viewspace_points"], render_pkg["visibility_filter"], render_pkg["radii"]
 
-        # loss
-        total_loss = loss + dist_loss + normal_loss
-        
-        total_loss.backward()
+            gt_image = viewpoint_cam.original_image.cuda()
+            Ll1 = l1_loss(image, gt_image)
+            loss = (1.0 - opt.lambda_dssim) * Ll1 + opt.lambda_dssim * (1.0 - ssim(image, gt_image))
 
-        iter_end.record()
+            # regularization
+            lambda_normal = opt.lambda_normal if iteration > 7000 else 0.0
+            lambda_dist = opt.lambda_dist if iteration > 3000 else 0.0
 
-        with torch.no_grad():
-            # print(f"[ITER {iteration}] Total Loss: {total_loss.item():.5f}, L1 Loss: {Ll1.item():.5f},"
-            #       f"Loss: {loss.item():.5}, ema_loss_for_log: {ema_loss_for_log:.5} ,Distortion Loss: {dist_loss.item():.5f}"
-            #       f"ema_dist_for_log: {ema_dist_for_log:.5},Normal Loss: {normal_loss.item():.5f}, ema_normal_for_log: {ema_normal_for_log:.5}")
-            # Progress bar
-            ema_loss_for_log = 0.4 * loss.item() + 0.6 * ema_loss_for_log
-            ema_dist_for_log = 0.4 * dist_loss.item() + 0.6 * ema_dist_for_log
-            ema_normal_for_log = 0.4 * normal_loss.item() + 0.6 * ema_normal_for_log
-            
+            rend_dist = render_pkg["rend_dist"]
+            rend_normal  = render_pkg['rend_normal']
+            surf_normal = render_pkg['surf_normal']
+            normal_error = (1 - (rend_normal * surf_normal).sum(dim=0))[None]
+            normal_loss = lambda_normal * (normal_error).mean()
+            dist_loss = lambda_dist * (rend_dist).mean()
 
-            if iteration % 10 == 0:
-                loss_dict = {
-                    "Loss": f"{ema_loss_for_log:.{5}f}",
-                    "distort": f"{ema_dist_for_log:.{5}f}",
-                    "normal": f"{ema_normal_for_log:.{5}f}",
-                    "Points": f"{len(gaussians.get_xyz)}"
-                }
-                progress_bar.set_postfix(loss_dict)
+            # loss
+            total_loss = loss + dist_loss + normal_loss
 
-                progress_bar.update(10)
-            if iteration == opt.iterations:
-                progress_bar.close()
+            total_loss.backward()
 
-            # Log and save
-            if tb_writer is not None:
-                tb_writer.add_scalar('train_loss_patches/dist_loss', ema_dist_for_log, iteration)
-                tb_writer.add_scalar('train_loss_patches/normal_loss', ema_normal_for_log, iteration)
+            iter_end.record()
 
-            training_report(tb_writer, iteration, Ll1, loss, l1_loss, iter_start.elapsed_time(iter_end), testing_iterations, scene, render, (pipe, background))
-            if (iteration in saving_iterations):
-                print("\n[ITER {}] Saving Gaussians".format(iteration))
-                scene.save(iteration)
+            with torch.no_grad():
+                # print(f"[ITER {iteration}] Total Loss: {total_loss.item():.5f}, L1 Loss: {Ll1.item():.5f},"
+                #       f"Loss: {loss.item():.5}, ema_loss_for_log: {ema_loss_for_log:.5} ,Distortion Loss: {dist_loss.item():.5f}"
+                #       f"ema_dist_for_log: {ema_dist_for_log:.5},Normal Loss: {normal_loss.item():.5f}, ema_normal_for_log: {ema_normal_for_log:.5}")
+                # Progress bar
+                ema_loss_for_log = 0.4 * loss.item() + 0.6 * ema_loss_for_log
+                ema_dist_for_log = 0.4 * dist_loss.item() + 0.6 * ema_dist_for_log
+                ema_normal_for_log = 0.4 * normal_loss.item() + 0.6 * ema_normal_for_log
 
 
-            # Densification
-            if iteration < opt.densify_until_iter:
-                gaussians.max_radii2D[visibility_filter] = torch.max(gaussians.max_radii2D[visibility_filter], radii[visibility_filter])
-                gaussians.add_densification_stats(viewspace_point_tensor, visibility_filter)
+                if iteration % 10 == 0:
+                    loss_dict = {
+                        "Loss": f"{ema_loss_for_log:.{5}f}",
+                        "distort": f"{ema_dist_for_log:.{5}f}",
+                        "normal": f"{ema_normal_for_log:.{5}f}",
+                        "Points": f"{len(gaussians.get_xyz)}"
+                    }
+                    progress_bar.set_postfix(loss_dict)
 
-                if iteration > opt.densify_from_iter and iteration % opt.densification_interval == 0:
-                    size_threshold = 20 if iteration > opt.opacity_reset_interval else None
-                    gaussians.densify_and_prune(opt.densify_grad_threshold, opt.opacity_cull, scene.cameras_extent, size_threshold)
-                
-                if iteration % opt.opacity_reset_interval == 0 or (dataset.white_background and iteration == opt.densify_from_iter):
-                    gaussians.reset_opacity()
+                    progress_bar.update(10)
+                if iteration == opt.iterations:
+                    progress_bar.close()
 
-            # Optimizer step
-            if iteration < opt.iterations:
-                gaussians.optimizer.step()
-                gaussians.optimizer.zero_grad(set_to_none = True)
+                # Log and save
+                if tb_writer is not None:
+                    tb_writer.add_scalar('train_loss_patches/dist_loss', ema_dist_for_log, iteration)
+                    tb_writer.add_scalar('train_loss_patches/normal_loss', ema_normal_for_log, iteration)
 
-            if (iteration in checkpoint_iterations):
-                print("\n[ITER {}] Saving Checkpoint".format(iteration))
-                torch.save((gaussians.capture(), iteration), scene.model_path + "/chkpnt" + str(iteration) + ".pth")
+                training_report(tb_writer, iteration, Ll1, loss, l1_loss, iter_start.elapsed_time(iter_end), testing_iterations, scene, render, (pipe, background))
+                if (iteration in saving_iterations or iteration % 5000 == 0):
+                    print("\n[ITER {}] Saving Gaussians".format(iteration))
+                    scene.save(iteration)
 
-        # with torch.no_grad():        
-        #     if network_gui.conn == None:
-        #         network_gui.try_connect(dataset.render_items)
-        #     while network_gui.conn != None:
-        #         try:
-        #             net_image_bytes = None
-        #             custom_cam, do_training, keep_alive, scaling_modifer, render_mode = network_gui.receive()
-        #             if custom_cam != None:
-        #                 render_pkg = render(custom_cam, gaussians, pipe, background, scaling_modifer)   
-        #                 net_image = render_net_image(render_pkg, dataset.render_items, render_mode, custom_cam)
-        #                 net_image_bytes = memoryview((torch.clamp(net_image, min=0, max=1.0) * 255).byte().permute(1, 2, 0).contiguous().cpu().numpy())
-        #             metrics_dict = {
-        #                 "#": gaussians.get_opacity.shape[0],
-        #                 "loss": ema_loss_for_log
-        #                 # Add more metrics as needed
-        #             }
-        #             # Send the data
-        #             network_gui.send(net_image_bytes, dataset.source_path, metrics_dict)
-        #             if do_training and ((iteration < int(opt.iterations)) or not keep_alive):
-        #                 break
-        #         except Exception as e:
-        #             # raise e
-        #             network_gui.conn = None
 
+                # Densification
+                if iteration < opt.densify_until_iter:
+                    gaussians.max_radii2D[visibility_filter] = torch.max(gaussians.max_radii2D[visibility_filter], radii[visibility_filter])
+                    gaussians.add_densification_stats(viewspace_point_tensor, visibility_filter)
+
+                    if iteration > opt.densify_from_iter and iteration % opt.densification_interval == 0:
+                        size_threshold = 20 if iteration > opt.opacity_reset_interval else None
+                        gaussians.densify_and_prune(opt.densify_grad_threshold, opt.opacity_cull, scene.cameras_extent, size_threshold)
+
+                    if iteration % opt.opacity_reset_interval == 0 or (dataset.white_background and iteration == opt.densify_from_iter):
+                        gaussians.reset_opacity()
+
+                # Optimizer step
+                if iteration < opt.iterations:
+                    gaussians.optimizer.step()
+                    gaussians.optimizer.zero_grad(set_to_none = True)
+
+                if (iteration in checkpoint_iterations):
+                    print("\n[ITER {}] Saving Checkpoint".format(iteration))
+                    torch.save((gaussians.capture(), iteration), scene.model_path + "/chkpnt" + str(iteration) + ".pth")
+    else:
+        #不跳过训练
+        print("skip train!-------->extract mesh")
+        dataset.model_path = args.trained_model_path
+        gaussians = GaussianModel(dataset.sh_degree)
+        scene = Scene(dataset, gaussians,load_iteration=args.iteration, shuffle=False)
 
 
     gaussExtractor = GaussianExtractor(gaussians, render, pipe, bg_color=bg_color)
-
     if not args.skip_mesh:
         print("export mesh ...")
         # set the active_sh to 0 to export only diffuse texture
@@ -339,7 +320,7 @@ def training_report(tb_writer, iteration, Ll1, loss, l1_loss, elapsed, testing_i
 
         torch.cuda.empty_cache()
 
-def run(point_path_in,save_output_path,iteration,save_format):
+def run(point_path_in,save_output_path,iteration,save_format,skip_train=False,trained_model_path=None,load_iteration=-1):
     # Set up command line argument parser
     parser = ArgumentParser(description="Training script parameters")
     lp = ModelParams(parser)
@@ -356,10 +337,11 @@ def run(point_path_in,save_output_path,iteration,save_format):
 
     parser.add_argument("--skip_test", action="store_true")
     parser.add_argument("--skip_mesh", action="store_true")
-    parser.add_argument("--skip_train", action="store_true")
+    parser.add_argument("--skip_train", action="store_true",default=skip_train)
     parser.add_argument("--render_path", action="store_true")
     # parser.add_argument("--test_iterations", nargs="+", type=int, default=[7_000, 30_000])
-    parser.add_argument("--save_iterations", nargs="+", type=int, default=[7_000, 30_000])
+    parser.add_argument("--save_iterations", nargs="+", type=int, default=[30_000])
+
 
     parser.add_argument("--save_format", type=str, default = save_format)
     parser.add_argument("--save_mesh_path", type=str, default = save_output_path)
@@ -370,6 +352,10 @@ def run(point_path_in,save_output_path,iteration,save_format):
     parser.add_argument("--num_cluster", default=50, type=int, help='Mesh: number of connected clusters to export')
     parser.add_argument("--unbounded", type=bool,default=True, help='Mesh: using unbounded mode for meshing')
     parser.add_argument("--mesh_res", default=1024, type=int, help='Mesh: resolution for unbounded mesh extraction')
+
+    parser.add_argument("--trained_model_path", type=str, default=trained_model_path)
+    parser.add_argument("--load_model_iteration", type=int, default=load_iteration)
+
     args = parser.parse_args(sys.argv[1:])
     args.save_iterations.append(args.iterations)
 

@@ -70,10 +70,12 @@ def save_mesh(mesh: o3d.geometry.TriangleMesh, save_path: str,save_format: str =
 
 
 def training(dataset, opt, pipe, testing_iterations, saving_iterations, checkpoint_iterations, checkpoint,save_mesh_path,iterations,input_path,args):
-    mode_path1=os.path.dirname(save_mesh_path)
-    opt.iterations = iterations
-    dataset.model_path = mode_path1
-    dataset.source_path = input_path
+    # print("Optimizing ---" + dataset.model_path)
+    dataset.save_mesh_path=args.save_mesh_path
+    dataset.source_path=input_path
+    # dataset.model_path=os.path.dirname(save_mesh_path)
+    opt.iterations=iterations
+    ###############
     first_iter = 0
     tb_writer = prepare_output_and_logger(dataset)
 
@@ -138,11 +140,14 @@ def training(dataset, opt, pipe, testing_iterations, saving_iterations, checkpoi
         iter_end.record()
 
         with torch.no_grad():
+            # print(f"[ITER {iteration}] Total Loss: {total_loss.item():.5f}, L1 Loss: {Ll1.item():.5f},"
+            #       f"Loss: {loss.item():.5}, ema_loss_for_log: {ema_loss_for_log:.5} ,Distortion Loss: {dist_loss.item():.5f}"
+            #       f"ema_dist_for_log: {ema_dist_for_log:.5},Normal Loss: {normal_loss.item():.5f}, ema_normal_for_log: {ema_normal_for_log:.5}")
             # Progress bar
             ema_loss_for_log = 0.4 * loss.item() + 0.6 * ema_loss_for_log
             ema_dist_for_log = 0.4 * dist_loss.item() + 0.6 * ema_dist_for_log
             ema_normal_for_log = 0.4 * normal_loss.item() + 0.6 * ema_normal_for_log
-
+            
 
             if iteration % 10 == 0:
                 loss_dict = {
@@ -163,8 +168,7 @@ def training(dataset, opt, pipe, testing_iterations, saving_iterations, checkpoi
                 tb_writer.add_scalar('train_loss_patches/normal_loss', ema_normal_for_log, iteration)
 
             training_report(tb_writer, iteration, Ll1, loss, l1_loss, iter_start.elapsed_time(iter_end), testing_iterations, scene, render, (pipe, background))
-            # if (iteration in saving_iterations):
-            if (iteration == opt.iterations):
+            if (iteration in saving_iterations):
                 print("\n[ITER {}] Saving Gaussians".format(iteration))
                 scene.save(iteration)
 
@@ -190,52 +194,104 @@ def training(dataset, opt, pipe, testing_iterations, saving_iterations, checkpoi
                 print("\n[ITER {}] Saving Checkpoint".format(iteration))
                 torch.save((gaussians.capture(), iteration), scene.model_path + "/chkpnt" + str(iteration) + ".pth")
 
+        # with torch.no_grad():        
+        #     if network_gui.conn == None:
+        #         network_gui.try_connect(dataset.render_items)
+        #     while network_gui.conn != None:
+        #         try:
+        #             net_image_bytes = None
+        #             custom_cam, do_training, keep_alive, scaling_modifer, render_mode = network_gui.receive()
+        #             if custom_cam != None:
+        #                 render_pkg = render(custom_cam, gaussians, pipe, background, scaling_modifer)   
+        #                 net_image = render_net_image(render_pkg, dataset.render_items, render_mode, custom_cam)
+        #                 net_image_bytes = memoryview((torch.clamp(net_image, min=0, max=1.0) * 255).byte().permute(1, 2, 0).contiguous().cpu().numpy())
+        #             metrics_dict = {
+        #                 "#": gaussians.get_opacity.shape[0],
+        #                 "loss": ema_loss_for_log
+        #                 # Add more metrics as needed
+        #             }
+        #             # Send the data
+        #             network_gui.send(net_image_bytes, dataset.source_path, metrics_dict)
+        #             if do_training and ((iteration < int(opt.iterations)) or not keep_alive):
+        #                 break
+        #         except Exception as e:
+        #             # raise e
+        #             network_gui.conn = None
 
 
 
     gaussExtractor = GaussianExtractor(gaussians, render, pipe, bg_color=bg_color)
-    print("export mesh ...")
-    # set the active_sh to 0 to export only diffuse texture
-    gaussExtractor.gaussians.active_sh_degree = 0
-    gaussExtractor.reconstruction(scene.getTrainCameras())
 
-    if args.unbounded:
-        name = 'fuse_unbounded.ply'
-        mesh = gaussExtractor.extract_mesh_unbounded(resolution=args.mesh_res)
-    else:
-        name = 'fuse.ply'
-        depth_trunc = (gaussExtractor.radius * 2.0) if args.depth_trunc < 0 else args.depth_trunc
-        voxel_size = (depth_trunc / args.mesh_res) if args.voxel_size < 0 else args.voxel_size
-        sdf_trunc = 5.0 * voxel_size if args.sdf_trunc < 0 else args.sdf_trunc
-        mesh = gaussExtractor.extract_mesh_bounded(voxel_size=voxel_size, sdf_trunc=sdf_trunc, depth_trunc=depth_trunc)
+    if not args.skip_mesh:
+        print("export mesh ...")
+        # set the active_sh to 0 to export only diffuse texture
+        gaussExtractor.gaussians.active_sh_degree = 0
+        gaussExtractor.reconstruction(scene.getTrainCameras())
+        # extract the mesh and save
+        if args.unbounded:
+            name = 'fuse_unbounded.ply'
+            mesh = gaussExtractor.extract_mesh_unbounded(resolution=args.mesh_res)
+        else:
+            name = 'fuse.ply'
+            depth_trunc = (gaussExtractor.radius * 2.0) if args.depth_trunc < 0 else args.depth_trunc
+            voxel_size = (depth_trunc / args.mesh_res) if args.voxel_size < 0 else args.voxel_size
+            sdf_trunc = 5.0 * voxel_size if args.sdf_trunc < 0 else args.sdf_trunc
+            mesh = gaussExtractor.extract_mesh_bounded(voxel_size=voxel_size, sdf_trunc=sdf_trunc,
+                                                       depth_trunc=depth_trunc)
 
-    # mesh_post = post_process_mesh(mesh, cluster_to_keep=args.num_cluster)
-    # o3d.io.write_triangle_mesh(save_mesh_path, mesh_post)
-    save_mesh(mesh, save_mesh_path,args.save_format)
+        # post-process the mesh and save, saving the largest N clusters
+        save_path = args.save_mesh_path
+        mesh_post = post_process_mesh(mesh, cluster_to_keep=args.num_cluster)
+        # # 获取文件扩展名
+        # file_extension = os.path.splitext(save_path)[-1].lower()
+        # if not mesh_post.is_empty():
+        #     if file_extension == '.obj':
+        #         # 保存为 .obj 格式
+        #         o3d.io.write_triangle_mesh(save_path, mesh_post)
+        #         print(f"Mesh successfully saved as {save_path}")
+        #     elif file_extension == '.ply':
+        #         # 保存为 .ply 格式
+        #         o3d.io.write_triangle_mesh(save_path, mesh_post)
+        #         print(f"Mesh successfully saved as {save_path}")
+        #     else:
+        #         print("Unsupported file format. Please use. obj ply. Such as path/mesh.ply")
+        # else:
+        #     print("The mesh is empty and cannot be saved.")
+        save_mesh(mesh_post, save_path)
+        # print("mesh post processed saved at {}".format(args.save_mesh_path))
 
 
-def prepare_output_and_logger(args):
+
+def prepare_output_and_logger(args_s):  
     # if not args.model_path:
     #     if os.getenv('OAR_JOB_ID'):
     #         unique_str=os.getenv('OAR_JOB_ID')
     #     else:
     #         unique_str = str(uuid.uuid4())
     #     args.model_path = os.path.join("./output/", unique_str[0:10])
-    #
-    # # Set up output folder
-    # print("Output folder: {}".format(args.model_path))
-    # os.makedirs(args.model_path, exist_ok = True)
-    # with open(os.path.join(args.model_path, "cfg_args"), 'w') as cfg_log_f:
-    #     cfg_log_f.write(str(Namespace(**vars(args))))
-    #
-    # # Create Tensorboard writer
-    # tb_writer = None
-    # if TENSORBOARD_FOUND:
-    #     tb_writer = SummaryWriter(args.model_path)
-    # else:
-    #     print("Tensorboard not available: not logging progress")
-    # return tb_writer
-    return None
+    # print("model path: ",args_s.save_mesh_path,"  --  ")
+    if args_s.save_mesh_path:
+        model_path2 = args_s.save_mesh_path
+        if model_path2.endswith('.ply') or model_path2.endswith('.obj'):
+            model_path2 = os.path.dirname(model_path2)  # 获取文件夹路径
+        elif model_path2.endswith(os.sep):  # 如果是目录路径
+            model_path2 = model_path2  # 保持目录路径
+        args_s.model_path = model_path2
+
+    # Set up output folder
+    print("Output folder: {}".format(args_s.model_path))
+    os.makedirs(args_s.model_path, exist_ok = True)
+    with open(os.path.join(args_s.model_path, "cfg_args"), 'w') as cfg_log_f:
+        cfg_log_f.write(str(Namespace(**vars(args_s))))
+
+    # Create Tensorboard writer
+    tb_writer = None
+    if TENSORBOARD_FOUND:
+        tb_writer = SummaryWriter(args_s.model_path)
+    else:
+        print("Tensorboard not available: not logging progress")
+    return tb_writer
+
 @torch.no_grad()
 def training_report(tb_writer, iteration, Ll1, loss, l1_loss, elapsed, testing_iterations, scene : Scene, renderFunc, renderArgs):
     if tb_writer:
@@ -259,7 +315,7 @@ def training_report(tb_writer, iteration, Ll1, loss, l1_loss, elapsed, testing_i
                     image = torch.clamp(render_pkg["render"], 0.0, 1.0)
                     gt_image = torch.clamp(viewpoint.original_image.to("cuda"), 0.0, 1.0)
                     if tb_writer and (idx < 5):
-                        from utils.general_utils import colormap
+                        from .utils.general_utils import colormap
                         depth = render_pkg["surf_depth"]
                         norm = depth.max()
                         depth = depth / norm
@@ -306,11 +362,17 @@ def run(point_path_in,save_output_path,iteration,save_format):
     parser.add_argument('--detect_anomaly', action='store_true', default=False)
     # parser.add_argument("--test_iterations", nargs="+", type=int, default=[7_000, 30_000])
     parser.add_argument("--test_iterations", nargs="+", type=int, default=default_test_iterations)
-    parser.add_argument("--save_iterations", nargs="+", type=int, default=[700])
+    # parser.add_argument("--save_iterations", nargs="+", type=int, default=[700])
     parser.add_argument("--quiet", action="store_true")
     parser.add_argument("--checkpoint_iterations", nargs="+", type=int, default=[])
     parser.add_argument("--start_checkpoint", type=str, default = None)
 
+    parser.add_argument("--skip_test", action="store_true")
+    parser.add_argument("--skip_mesh", action="store_true")
+    parser.add_argument("--skip_train", action="store_true")
+    parser.add_argument("--render_path", action="store_true")
+    # parser.add_argument("--test_iterations", nargs="+", type=int, default=[7_000, 30_000])
+    parser.add_argument("--save_iterations", nargs="+", type=int, default=[7_000, 30_000])
 
     parser.add_argument("--save_format", type=str, default = save_format)
     parser.add_argument("--save_mesh_path", type=str, default = save_output_path)
@@ -324,7 +386,7 @@ def run(point_path_in,save_output_path,iteration,save_format):
     args = parser.parse_args(sys.argv[1:])
     args.save_iterations.append(args.iterations)
 
-    print("Optimizing " + args.model_path)
+    # print("Optimizing " + args.model_path)
 
     # Initialize system state (RNG)
     safe_state(args.quiet)
@@ -333,7 +395,6 @@ def run(point_path_in,save_output_path,iteration,save_format):
     torch.autograd.set_detect_anomaly(args.detect_anomaly)
     training(lp.extract(args), op.extract(args), pp.extract(args), args.test_iterations, args.save_iterations, args.checkpoint_iterations,
              args.start_checkpoint,save_mesh_path=args.save_mesh_path,iterations=args.train_iterations,input_path=point_path_in,args=args)
-
 
     # All done
     print("\nTraining complete.")

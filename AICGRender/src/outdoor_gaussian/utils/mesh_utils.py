@@ -63,7 +63,6 @@ def to_cam_open3d(viewpoint_stack):
 
         extrinsic=np.asarray((viewpoint_cam.world_view_transform.T).cpu().numpy())
         camera = o3d.camera.PinholeCameraParameters()
-
         camera.extrinsic = extrinsic
         camera.intrinsic = intrinsic
         camera_traj.append(camera)
@@ -273,22 +272,21 @@ class GaussianExtractor(object):
         
         # coloring the mesh
         torch.cuda.empty_cache()
-        # 获取顶点和面
-        vertices = mesh.vertices
-        faces = mesh.faces
-
-        # 创建 Open3D TriangleMesh 对象
-        mesh_o3d = o3d.geometry.TriangleMesh()
-
-        # 设置顶点和面
-        mesh_o3d.vertices = o3d.utility.Vector3dVector(vertices)
-        mesh_o3d.triangles = o3d.utility.Vector3iVector(faces)
-
-
+        ##################################
+        vertices = np.asarray(mesh.vertices)
+        faces = np.asarray(mesh.faces)
+        open3d_mesh = o3d.geometry.TriangleMesh()
+        open3d_mesh.vertices = o3d.utility.Vector3dVector(vertices)
+        open3d_mesh.triangles = o3d.utility.Vector3iVector(faces)
+        if hasattr(mesh.visual, 'vertex_colors') and mesh.visual.vertex_colors is not None:
+            vertex_colors = np.asarray(mesh.visual.vertex_colors)[:, :3]
+            open3d_mesh.vertex_colors = o3d.utility.Vector3dVector(vertex_colors)
+        ##################################
+        # mesh = mesh.as_open3d
         print("texturing mesh ... ")
-        _, rgbs = compute_unbounded_tsdf(torch.tensor(np.asarray(mesh_o3d.vertices)).float().cuda(), inv_contraction=None, voxel_size=voxel_size, return_rgb=True)
-        mesh_o3d.vertex_colors = o3d.utility.Vector3dVector(rgbs.cpu().numpy())
-        return mesh_o3d
+        _, rgbs = compute_unbounded_tsdf(torch.tensor(np.asarray(open3d_mesh.vertices)).float().cuda(), inv_contraction=None, voxel_size=voxel_size, return_rgb=True)
+        open3d_mesh.vertex_colors = o3d.utility.Vector3dVector(rgbs.cpu().numpy())
+        return open3d_mesh
 
     @torch.no_grad()
     def export_image(self, path):
@@ -302,6 +300,6 @@ class GaussianExtractor(object):
             gt = viewpoint_cam.original_image[0:3, :, :]
             save_img_u8(gt.permute(1,2,0).cpu().numpy(), os.path.join(gts_path, '{0:05d}'.format(idx) + ".png"))
             save_img_u8(self.rgbmaps[idx].permute(1,2,0).cpu().numpy(), os.path.join(render_path, '{0:05d}'.format(idx) + ".png"))
-            save_img_f32(self.depthmaps[idx][0].cpu().numpy(), os.path.join(vis_path, 'depth_{0:05d}'.format(idx) + ".tiff"))
+            # save_img_f32(self.depthmaps[idx][0].cpu().numpy(), os.path.join(vis_path, 'depth_{0:05d}'.format(idx) + ".tiff"))
             # save_img_u8(self.normals[idx].permute(1,2,0).cpu().numpy() * 0.5 + 0.5, os.path.join(vis_path, 'normal_{0:05d}'.format(idx) + ".png"))
             # save_img_u8(self.depth_normals[idx].permute(1,2,0).cpu().numpy() * 0.5 + 0.5, os.path.join(vis_path, 'depth_normal_{0:05d}'.format(idx) + ".png"))

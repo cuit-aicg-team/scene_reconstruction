@@ -36,17 +36,19 @@ def filter_depth_outliers(depth_map, kernel_size=3, threshold=1.0):
 
 class Reanders(object):
 
-    def __init__(self, config_path, config=None) -> None:
+    def __init__(self, config_path,input_path,save_path,scene_type=0,config=None) -> None:
         if config is None:
             self.config = load_config(config_path)
         else:
             self.config = config
-        output_image_path = self.config["data"]["output_image_path"]
-        os.makedirs(output_image_path, exist_ok=True)
-
+        # output_image_path = save_path # self.config["data"]["output_image_path"]
+        os.makedirs(save_path, exist_ok=True)
+        self.config["data"]["input_path"]=input_path
+        self.config["data"]["scene_type"] = scene_type
         setup_seed(self.config["seed"])
         self.device = "cuda"
         self.dataset = get_dataset()({**self.config["data"], **self.config["cam"]})
+        self.dataset.output_image_path = save_path
         self.scene_name = self.config["data"]["scene_name"]
         self.dataset_name = self.config["dataset_name"]
         self.gt_poses = np.array(self.dataset.poses)

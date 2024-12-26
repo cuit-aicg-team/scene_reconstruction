@@ -5,7 +5,7 @@ with open("README.md", "r") as fh:
 
 setuptools.setup(
     name="aicg-model-generation",
-    version="0.2.2",
+    version="0.2.8",
     author="aicg",
     author_email="aicg@qq.com",
     description="new sdf package",
@@ -29,14 +29,6 @@ setuptools.setup(
     # pip install git+https://github.com/hbb1/diff-surfel-rasterization.git@e0ed0207b3e0669960cfad70852200a4a5847f61
     # pip install git+https://github.com/rmurai0610/diff-gaussian-rasterization-w-pose.git@43e21bff91cd24986ee3dd52fe0bb06952e50ec7
     install_requires=[
-        'numpy', 
-        "gradio_imageslider",
-        "gradio==4.29.0",
-        "matplotlib",
-        "requests",
-        "tqdm",
-        "plyfile",
-        "open3d",
         "opencv-python",
     ],
     classifiers=[

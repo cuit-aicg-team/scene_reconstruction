@@ -178,7 +178,7 @@ def get_surface_sliding(
           if sence_type ==0:
             filename = str(output_path)+f"/object_mesh_{formatted_time}.ply"
           else:
-            filename = str(output_path)+f"/object_mesh_{formatted_time}.ply"
+            filename = str(output_path)+f"/indoor_mesh_{formatted_time}.ply"
         new_mesh = combined
         if gt is not None:
             # print(filename_simplify)
@@ -200,9 +200,6 @@ def get_surface_sliding(
         new_mesh.export(filename)   
         if gaussian_config is not None:
             pass
-            # reanders = Reanders(gaussian_config)
-            # reanders.run_global_map_create(new_mesh)
-
        
 
 

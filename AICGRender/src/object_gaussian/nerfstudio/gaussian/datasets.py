@@ -50,6 +50,7 @@ class My_RGBD(BaseDataset):
   
     def __init__(self, dataset_config: dict):
         super().__init__(dataset_config)
+        # if(self)
         rgb_dir = os.path.join(self.dataset_path, 'rgb')
         depth_dir = os.path.join(self.dataset_path, 'depth')
         pose_dir = os.path.join(self.dataset_path, 'pose_1')

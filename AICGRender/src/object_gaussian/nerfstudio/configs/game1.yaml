@@ -4,6 +4,7 @@ data:
   output_image_path: output/objectdoor/model/ #输出结果路径
   output_mesh_path: output/objectdoor/model/
   scene_name: result
+  scene_type: 0
 cam:  #intrinsic is different per scene in TUM
   H: 2048 
   W: 2448

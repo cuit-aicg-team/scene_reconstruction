@@ -10,6 +10,7 @@ from typing import Optional
 import torch
 import torchvision
 
+import sys
 import tyro
 from rich.console import Console
 from typing_extensions import Literal
@@ -67,14 +68,16 @@ class TextureMesh:
         )
 
 
-def entrypoint():
+def entrypoint(mode_config,unrgb_model,save_path):
+    # python scripts/texture.py  outputs/neus-facto-dtu65/neus-facto/XXX/config.yml --input-mesh-filename ./meshes/test.ply --output-dir ./textures --target_num_faces 50000
+    sys.argv = [
+        " ",
+        "--load-config", mode_config,
+        "--input-mesh-filename", unrgb_model,
+        "--output-dir", save_path,
+        "--target-num-faces", str(500000)
+    ]
+    print(mode_config+" unrgb_model ",unrgb_model, "  save_path ",save_path)
     """Entrypoint for use with pyproject scripts."""
     tyro.extras.set_accent_color("bright_yellow")
     tyro.cli(tyro.conf.FlagConversionOff[TextureMesh]).main()
-
-
-if __name__ == "__main__":
-    entrypoint()
-
-# For sphinx docs
-get_parser_fn = lambda: tyro.extras.get_parser(TextureMesh)  # noqa

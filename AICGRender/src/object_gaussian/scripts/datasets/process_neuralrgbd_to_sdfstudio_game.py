@@ -65,9 +65,9 @@ def load_poses(posefile):
     return poses, valid
 
 # type : choices=["mono_prior", "sensor_depth"]
-def data_style_deal(color_paths,depth_paths,poses,camera_intrinsic,output_path,depth_scale,type="sensor_depth"):
+def data_style_deal(color_paths,depth_paths,poses,camera_intrinsic,output_path,depth_scale,type="sensor_depth",sence_type=0):
     output_path = Path(output_path)  # "data/custom/scannet_scene0050_00"
-
+    # print("color_paths ----",color_paths)
     output_path.mkdir(parents=True, exist_ok=True)
     # output_path = Path(args.output_path)  # "data/neural_rgbd/breakfast_room/"
     # input_path = Path(args.input_path)  # "data/neural_rgbd_data/breakfast_room/"
@@ -83,7 +83,7 @@ def data_style_deal(color_paths,depth_paths,poses,camera_intrinsic,output_path,d
     # depth_paths = sorted(glob.glob(os.path.join(depth_path, "*.png")), key=alphanum_key)
 
     H, W = cv2.imread(color_paths[0]).shape[:2]
-    print(H, W)
+    # print(H, W)
 
     # # load intrinsic
     # intrinsic_path = input_path / "focal.txt"
@@ -106,7 +106,8 @@ def data_style_deal(color_paths,depth_paths,poses,camera_intrinsic,output_path,d
 
     # OpenGL/Blender convention, needs to change to COLMAP/OpenCV convention
     # https://docs.nerf.studio/en/latest/quickstart/data_conventions.html
-    # poses[:, 0:3, 1:3] *= -1
+    if sence_type == 1:
+       poses[:, 0:3, 1:3] *= -1
     # poses[:, 0:3, 3]/= 1000.0
 
     # deal with invalid poses
@@ -158,9 +159,9 @@ def data_style_deal(color_paths,depth_paths,poses,camera_intrinsic,output_path,d
     frames = []
     out_index = 0
     for idx, (valid, pose, image_path, depth_path) in enumerate(zip(valid_poses, poses, color_paths, depth_paths)):
-
-        # if idx % 10 != 0:
-        #     continue
+        if sence_type == 1:
+          if idx % 10 != 0:
+              continue
         # if not valid:
             
         # number = continuesort_key(image_path)

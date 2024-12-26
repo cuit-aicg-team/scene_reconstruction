@@ -57,15 +57,10 @@ class ModelParams(ParamGroup):
         self.render_items = ['RGB', 'Alpha', 'Normal', 'Depth', 'Edge', 'Curvature']
         super().__init__(parser, "Loading Parameters", sentinel)
 
-    def set_model_path(self, path):
-        self._model_path = path
-
-    def set_source_path(self, path):
-        self._source_path = path
-
     def extract(self, args):
         g = super().extract(args)
         g.source_path = os.path.abspath(g.source_path)
+        # print("  --------------------- ",g.model_path)
         return g
 
 class PipelineParams(ParamGroup):
@@ -78,7 +73,7 @@ class PipelineParams(ParamGroup):
 
 class OptimizationParams(ParamGroup):
     def __init__(self, parser):
-        self.iterations = 10000
+        self.iterations = 50
         self.position_lr_init = 0.00016
         self.position_lr_final = 0.0000016
         self.position_lr_delay_mult = 0.01

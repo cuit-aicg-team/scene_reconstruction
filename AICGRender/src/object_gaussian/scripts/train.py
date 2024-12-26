@@ -45,6 +45,8 @@ import tyro
 import yaml
 from rich.console import Console
 
+from ..nerfstudio.exporter.exporter_utils import get_mesh_from_filename
+from ..nerfstudio.gaussian.reanders import Reanders
 from ..nerfstudio.configs import base_config as cfg
 from ..nerfstudio.configs.config_utils import convert_markup_to_ansi
 from ..nerfstudio.configs.method_configs import AnnotatedBaseConfigUnion
@@ -245,8 +247,13 @@ def main(config: cfg.Config) -> None:
         config=config,
     )
 
+def newView(mesh_ply_path,input_path,save_path):
+      reanders = Reanders("AICGRender/src/object_gaussian/nerfstudio/configs/game1.yaml",input_path,save_path)
+      mesh = get_mesh_from_filename(str(mesh_ply_path))
+      reanders.run_global_map_create(mesh)
+      pass
 
-def entrypoint(path_in,save_output_path,iteration):
+def entrypoint(path_in,save_output_path,iteration,sence_type):
     globals()['save_path']=save_output_path
     globals()['max_iteration']=iteration
     sys.argv = [
@@ -257,14 +264,14 @@ def entrypoint(path_in,save_output_path,iteration):
         "--pipeline.model.sdf-field.num-layers-color", "2",
         "--pipeline.model.sdf-field.use-appearance-embedding", "True",
         "--pipeline.model.sdf-field.geometric-init", "True",
-        "--pipeline.model.sdf-field.inside-outside", "False",
+        "--pipeline.model.sdf-field.inside-outside","False" if sence_type==0 else "True",
         "--pipeline.model.sdf-field.bias", "0.8",
         "--pipeline.model.sdf-field.beta-init", "0.3",
         "--pipeline.datamanager.train-num-images-to-sample-from", "-1",
         "--trainer.steps-per-eval-image", "5000",
         "--pipeline.model.background-model", "none",
         "--vis", "wandb",
-        "--experiment-name", "kitchen_sensor_depth-neus",
+        # "--experiment-name", "kitchen_sensor_depth-neus",
         "--pipeline.model.sensor-depth-l1-loss-mult", "0.1",
         "--pipeline.model.sensor-depth-freespace-loss-mult", "10.0",
         "--pipeline.model.sensor-depth-sdf-loss-mult", "6000.0",

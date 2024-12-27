@@ -65,6 +65,9 @@ def training(dataset, opt, pipe, testing_iterations, saving_iterations, checkpoi
     ###############
     first_iter = 0
     tb_writer = prepare_output_and_logger(dataset)
+    bg_color = [1, 1, 1] if dataset.white_background else [0, 0, 0]
+    background = torch.tensor(bg_color, dtype=torch.float32, device="cuda")
+
 
     if not args.skip_train:
         gaussians = GaussianModel(dataset.sh_degree)
@@ -73,9 +76,6 @@ def training(dataset, opt, pipe, testing_iterations, saving_iterations, checkpoi
         if checkpoint:
             (model_params, first_iter) = torch.load(checkpoint)
             gaussians.restore(model_params, opt)
-
-        bg_color = [1, 1, 1] if dataset.white_background else [0, 0, 0]
-        background = torch.tensor(bg_color, dtype=torch.float32, device="cuda")
 
         iter_start = torch.cuda.Event(enable_timing = True)
         iter_end = torch.cuda.Event(enable_timing = True)
@@ -156,7 +156,7 @@ def training(dataset, opt, pipe, testing_iterations, saving_iterations, checkpoi
                     tb_writer.add_scalar('train_loss_patches/normal_loss', ema_normal_for_log, iteration)
 
                 training_report(tb_writer, iteration, Ll1, loss, l1_loss, iter_start.elapsed_time(iter_end), testing_iterations, scene, render, (pipe, background))
-                if (iteration in saving_iterations or iteration % 5000 == 0):
+                if (iteration in saving_iterations or iteration % 5000 == 0 or iteration == opt.iterations):
                     print("\n[ITER {}] Saving Gaussians".format(iteration))
                     scene.save(iteration)
 
@@ -186,7 +186,7 @@ def training(dataset, opt, pipe, testing_iterations, saving_iterations, checkpoi
         print("skip train!-------->extract mesh")
         dataset.model_path = args.trained_model_path
         gaussians = GaussianModel(dataset.sh_degree)
-        scene = Scene(dataset, gaussians,load_iteration=args.iteration, shuffle=False)
+        scene = Scene(dataset, gaussians,load_iteration=args.load_model_iteration, shuffle=False)
 
 
     gaussExtractor = GaussianExtractor(gaussians, render, pipe, bg_color=bg_color)

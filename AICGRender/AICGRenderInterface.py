@@ -532,6 +532,9 @@ class IndoorsceneReconstruction:
             elif model_path2.endswith(os.sep):  # 如果是目录路径
                 model_path2 = model_path2  # 保持目录路径
             default_indoor_model_out_path = model_path2
+        
+        default_deal_style_out_path = default_indoor_model_out_path+"/data"
+        default_model_out_path = default_indoor_model_out_path+"/g_model"
 
         if image_path_in is None:
             print("Please input image path")
@@ -580,13 +583,12 @@ class IndoorsceneReconstruction:
             if recon_data.get_camera_extrinsics() is not None:
                 poses=recon_data.get_camera_extrinsics()
             pass
-        if os.path.exists(default_deal_style_out_path):
-            shutil.rmtree(default_deal_style_out_path)
+     
         NeuralRGBD.data_style_deal(color_paths=color_paths,depth_paths=depth_paths,poses=poses,camera_intrinsic=camera_intrinsic,output_path=default_deal_style_out_path,depth_scale=depth_scale,sence_type=sence_type)
         ObjectSReconstruction.entrypoint(path_in=default_deal_style_out_path, save_output_path=default_model_out_path,iteration=iteration,sence_type=sence_type)
         print("save_output_path",save_output_path)
         ExtractMesh.entrypoint(default_model_out_path+"/config.yml",save_output_path,sence_type)
-        ExtractTextureMesh.entrypoint(default_model_out_path+"/config.yml",save_output_path,default_indoor_model_out_path)
+        ExtractTextureMesh.entrypoint(default_model_out_path+"/config.yml",save_output_path,default_indoor_model_out_path+"/texture")
         pass
 
 
@@ -670,6 +672,9 @@ class ObjectReconstruction:
                 model_path2 = model_path2  # 保持目录路径
             default_object_model_out_path = model_path2
 
+        default_deal_style_out_path = default_object_model_out_path+"/data"
+        default_model_out_path = default_object_model_out_path+"/g_model"
+
         if image_path_in is None:
             print("Please input image path")
             return   
@@ -715,11 +720,10 @@ class ObjectReconstruction:
             if recon_data.get_camera_extrinsics() is not None:
                 poses=recon_data.get_camera_extrinsics()
             pass
-        if os.path.exists(default_deal_style_out_path):
-            shutil.rmtree(default_deal_style_out_path)
+       
         NeuralRGBD.data_style_deal(color_paths=color_paths,depth_paths=depth_paths,poses=poses,camera_intrinsic=camera_intrinsic,output_path=default_deal_style_out_path,depth_scale=depth_scale,sence_type=sence_type)
         ObjectSReconstruction.entrypoint(path_in=default_deal_style_out_path, save_output_path=default_model_out_path,iteration=iteration,sence_type=sence_type)
         print("save_output_path",save_output_path)
         ExtractMesh.entrypoint(default_model_out_path+"/config.yml",save_output_path,sence_type)
-        ExtractTextureMesh.entrypoint(default_model_out_path+"/config.yml",save_output_path,default_object_model_out_path)
+        ExtractTextureMesh.entrypoint(default_model_out_path+"/config.yml",save_output_path,default_object_model_out_path+"/texture")
         pass

@@ -525,6 +525,13 @@ class IndoorsceneReconstruction:
         '''
         if save_output_path is None:
             save_output_path = default_indoor_model_out_path+"/un_rgb_indoor_model.ply"
+        else:
+            model_path2 = save_output_path
+            if model_path2.endswith('.ply') or model_path2.endswith('.obj'):
+                model_path2 = os.path.dirname(model_path2)  # 获取文件夹路径
+            elif model_path2.endswith(os.sep):  # 如果是目录路径
+                model_path2 = model_path2  # 保持目录路径
+            default_indoor_model_out_path = model_path2
 
         if image_path_in is None:
             print("Please input image path")
@@ -655,6 +662,13 @@ class ObjectReconstruction:
         '''
         if save_output_path is None:
             save_output_path = default_object_model_out_path+"/un_rgb_object_model.ply"
+        else:
+            model_path2 = save_output_path
+            if model_path2.endswith('.ply') or model_path2.endswith('.obj'):
+                model_path2 = os.path.dirname(model_path2)  # 获取文件夹路径
+            elif model_path2.endswith(os.sep):  # 如果是目录路径
+                model_path2 = model_path2  # 保持目录路径
+            default_object_model_out_path = model_path2
 
         if image_path_in is None:
             print("Please input image path")
@@ -701,7 +715,6 @@ class ObjectReconstruction:
             if recon_data.get_camera_extrinsics() is not None:
                 poses=recon_data.get_camera_extrinsics()
             pass
-        # default_deal_style_out_path = "./input/object/dtu-scan65"
         if os.path.exists(default_deal_style_out_path):
             shutil.rmtree(default_deal_style_out_path)
         NeuralRGBD.data_style_deal(color_paths=color_paths,depth_paths=depth_paths,poses=poses,camera_intrinsic=camera_intrinsic,output_path=default_deal_style_out_path,depth_scale=depth_scale,sence_type=sence_type)

@@ -112,8 +112,8 @@ def entrypoint(mode_config,unrgb_model,save_path):
         " ",
         "--load-config", mode_config,
         "--input-mesh-filename", unrgb_model,
-        "--output-dir", save_path,
-        "--target-num-faces", str(500000)
+        "--output-dir", save_path
+        "--target-num-faces", str(50000)
     ]
     print(mode_config+" unrgb_model ",unrgb_model, "  save_path ",save_path)
     """Entrypoint for use with pyproject scripts."""

@@ -35,12 +35,13 @@ default_point_out_path="./output/points"
 default_depth_out_path='./output/depth'
 default_outdoor_model_out_path="./output/outdoor/model"
 default_outdoor_render_out_path="./output/outdoor/render"
-default_indoor_model_out_path="./output/indoor/model"
+default_indoor_model_out_path="./output/indoor/model/un_rgb_indoor_model.ply"
 default_indoor_render_out_path="./output/indoor/render"
-default_object_model_out_path="./output/object/model"
+default_object_model_out_path="./output/object/model/un_rgb_object_model.ply"
 default_objeect_render_out_path="./output/object/render"
 default_deal_style_out_path="./output/dealStyle"
 default_model_out_path="./output/dealStyle/out"
+default_texture_out_path="./output/dealStyle/texture"
 
 def extract_number(filename):   
     return [int(x) if x.isdigit() else x for x in re.split("([0-9]+)", filename)]
@@ -365,8 +366,85 @@ class DepthCreator:
         self.download_file(file_url, save_path, callback=self.on_download_complete)
         pass
 
+class StyleDealer:
+    def __init__(self,sence_type=0):
+        '''
+          Input:
+              config: Currently Configuration file include Camera extrinsics adn intrinsics etc. this file is enabled to expand other parameters in future.
+        '''
+        self.sence_type=sence_type
+        if (self.sence_type == 0):
+            self.depth_scale = 21.845
+        else:
+            self.depth_scale = 1000.0
 
 
+    def unified_output_format(self,save_output_path,default_save_path):
+        if save_output_path is None:
+            save_output_path = default_save_path
+       
+        model_path2 = save_output_path
+        if model_path2.endswith('.ply') or model_path2.endswith('.obj'):
+            model_path2 = os.path.dirname(model_path2)  # 获取文件夹路径
+        elif model_path2.endswith(os.sep):  # 如果是目录路径
+            model_path2 = model_path2  # 保持目录路径
+        else:
+            print("Please input a valid save_output_path")
+
+        default_deal_style_out_path = model_path2+"/data"
+        default_model_out_path = model_path2+"/g_model"
+        default_texture_out_path = model_path2+"/texture"
+        return save_output_path, default_deal_style_out_path,default_model_out_path,default_texture_out_path
+    
+
+    def loadData(self,point_creator,image_path_in,depth_images_in,recon_data):
+          # load color    
+        if self.sence_type ==0:  
+            color_paths = sorted([image_path_in + "/" + f for f in os.listdir(image_path_in) if f.endswith('.png') or f.endswith('.jpg')])
+        else:
+            color_paths = sorted(glob.glob(os.path.join(image_path_in, "*.png")), key=extract_number)   
+        # color_paths = sorted(color_paths, key=extract_number)
+        # load depth
+        depth_paths = []
+        if depth_images_in is None:
+            if os.path.exists(default_depth_out_path):
+                 shutil.rmtree(default_depth_out_path)
+            self.__depth_creator.aicg_depth_create(rgb_images_in=image_path_in, save_output_path=default_depth_out_path,recon_data=recon_data)
+            depth_images_in = default_depth_out_path
+
+        
+        if self.sence_type == 0: 
+           depth_paths = sorted([depth_images_in + "/" + f for f in os.listdir(depth_images_in) if f.endswith('.png')])
+        else:
+           depth_paths = sorted(glob.glob(os.path.join(depth_images_in, "*.png")), key=extract_number)
+        # depth_paths = sorted(depth_paths, key=extract_number)
+        
+        camera_intrinsic =""
+        poses = []
+        if recon_data is None:
+            if os.path.exists(default_point_out_path):
+                 shutil.rmtree(default_point_out_path)
+            point_creator.aicg_point_create(rgb_images_in=image_path_in, save_output_path=default_point_out_path,recon_data=recon_data)
+            cam_intrinsics =point_creator.colmapConverter.getCameraIntrinsics(default_point_out_path)
+            cam_extrinsics = point_creator.colmapConverter.getCameraExtrinsics(default_point_out_path)
+            camera_intrinsic=cam_intrinsics
+            poses=cam_extrinsics
+        else:
+            depth_scale = recon_data.get_depth_scale()
+            if recon_data.get_camera_intrinsics() is None:
+                if os.path.exists(default_point_out_path):
+                    shutil.rmtree(default_point_out_path)
+                point_creator.aicg_point_create(rgb_images_in=image_path_in, save_output_path=default_point_out_path,recon_data=recon_data)
+                cam_intrinsics = point_creator.colmapConverter.getCameraIntrinsics(default_point_out_path)
+                cam_extrinsics = point_creator.colmapConverter.getCameraExtrinsics(default_point_out_path)
+                camera_intrinsic=cam_intrinsics
+                poses=cam_extrinsics
+            else:
+                camera_intrinsic=recon_data.get_camera_intrinsics()
+            if recon_data.get_camera_extrinsics() is not None:
+                poses=recon_data.get_camera_extrinsics()
+        return color_paths,depth_paths,camera_intrinsic,poses,depth_scale
+        
 class OutdoorsceneReconstruction:
     '''
     A Python API class for outdoor scene reconstruction.
@@ -470,7 +548,8 @@ class IndoorsceneReconstruction:
         '''
         self.__config=config
         self.__depth_creator = DepthCreator(config=self.__config)
-        self.__point_creator = PointCreator(config=self.__config)    
+        self.__point_creator = PointCreator(config=self.__config)   
+        self.__style_dealer = StyleDealer(1) 
 
     def call_class_aicg_depth_create(self, rgb_images_in=None, save_output_path=None, recon_data: ReconstructData = None):
         '''
@@ -523,72 +602,20 @@ class IndoorsceneReconstruction:
         return:
             mesh (trimesh.Trimesh): Mesh object
         '''
-        if save_output_path is None:
-            save_output_path = default_indoor_model_out_path+"/un_rgb_indoor_model.ply"
-        else:
-            model_path2 = save_output_path
-            if model_path2.endswith('.ply') or model_path2.endswith('.obj'):
-                model_path2 = os.path.dirname(model_path2)  # 获取文件夹路径
-            elif model_path2.endswith(os.sep):  # 如果是目录路径
-                model_path2 = model_path2  # 保持目录路径
-            default_indoor_model_out_path = model_path2
-        
-        default_deal_style_out_path = default_indoor_model_out_path+"/data"
-        default_model_out_path = default_indoor_model_out_path+"/g_model"
-
         if image_path_in is None:
             print("Please input image path")
-            return   
-        # load color    
-        # color_paths = [image_path_in + "/" + f for f in os.listdir(image_path_in) if f.endswith('.png') or f.endswith('.jpg')]
-        color_paths = sorted(glob.glob(os.path.join(image_path_in, "*.png")), key=extract_number)
-        # print("color_paths: ",color_paths)
-        # load depth
-        depth_paths = []
-        if depth_images_in is None:
-            if os.path.exists(default_depth_out_path):
-                 shutil.rmtree(default_depth_out_path)
-            self.__depth_creator.aicg_depth_create(rgb_images_in=image_path_in, save_output_path=default_depth_out_path,recon_data=recon_data)
-            depth_images_in = default_depth_out_path
-
-        
-        # depth_paths = [depth_images_in + "/" + f for f in os.listdir(depth_images_in) if f.endswith('.png')]
-        depth_paths = sorted(glob.glob(os.path.join(depth_images_in, "*.png")), key=extract_number)
+            return 
+        sence_type = self.__style_dealer.sence_type
+        depth_scale = self.__style_dealer.depth_scale
+        save_output_path,default_deal_style_out_path,default_model_out_path,default_texture_out_path = self.__style_dealer.unified_output_format(save_output_path,default_indoor_model_out_path)
+        color_paths,depth_paths,camera_intrinsic,poses,depth_scale =self.__style_dealer.loadData(self.__point_creator,image_path_in,depth_images_in,recon_data)
        
-        
-        camera_intrinsic =""
-        depth_scale = 1000.0
-        poses = []
-        sence_type = 1
-        if recon_data is None:
-            if os.path.exists(default_point_out_path):
-                 shutil.rmtree(default_point_out_path)
-            self.__point_creator.aicg_point_create(rgb_images_in=image_path_in, save_output_path=default_point_out_path,recon_data=recon_data)
-            cam_intrinsics = self.__point_creator.colmapConverter.getCameraIntrinsics(default_point_out_path)
-            cam_extrinsics = self.__point_creator.colmapConverter.getCameraExtrinsics(default_point_out_path)
-            camera_intrinsic=cam_intrinsics
-            poses=cam_extrinsics
-        else:
-            depth_scale = recon_data.get_depth_scale()
-            if recon_data.get_camera_intrinsics() is None:
-                if os.path.exists(default_point_out_path):
-                    shutil.rmtree(default_point_out_path)
-                self.__point_creator.aicg_point_create(rgb_images_in=image_path_in, save_output_path=default_point_out_path,recon_data=recon_data)
-                cam_intrinsics = self.__point_creator.colmapConverter.getCameraIntrinsics(default_point_out_path)
-                cam_extrinsics = self.__point_creator.colmapConverter.getCameraExtrinsics(default_point_out_path)
-                camera_intrinsic=cam_intrinsics
-                poses=cam_extrinsics
-            else:
-                camera_intrinsic=recon_data.get_camera_intrinsics()
-            if recon_data.get_camera_extrinsics() is not None:
-                poses=recon_data.get_camera_extrinsics()
-            pass
      
         NeuralRGBD.data_style_deal(color_paths=color_paths,depth_paths=depth_paths,poses=poses,camera_intrinsic=camera_intrinsic,output_path=default_deal_style_out_path,depth_scale=depth_scale,sence_type=sence_type)
         ObjectSReconstruction.entrypoint(path_in=default_deal_style_out_path, save_output_path=default_model_out_path,iteration=iteration,sence_type=sence_type)
         print("save_output_path",save_output_path)
         ExtractMesh.entrypoint(default_model_out_path+"/config.yml",save_output_path,sence_type)
-        ExtractTextureMesh.entrypoint(default_model_out_path+"/config.yml",save_output_path,default_indoor_model_out_path+"/texture")
+        ExtractTextureMesh.entrypoint(default_model_out_path+"/config.yml",save_output_path,default_texture_out_path)
         pass
 
 
@@ -610,6 +637,7 @@ class ObjectReconstruction:
         self.__config=config
         self.__depth_creator = DepthCreator(config=self.__config)
         self.__point_creator = PointCreator(config=self.__config)
+        self.__style_dealer = StyleDealer(0) 
 
     def call_class_aicg_depth_create(self, rgb_images_in=None, save_output_path=None, recon_data: ReconstructData = None):
         '''
@@ -662,68 +690,18 @@ class ObjectReconstruction:
         return:
             mesh (trimesh.Trimesh): Mesh object
         '''
-        if save_output_path is None:
-            save_output_path = default_object_model_out_path+"/un_rgb_object_model.ply"
-        else:
-            model_path2 = save_output_path
-            if model_path2.endswith('.ply') or model_path2.endswith('.obj'):
-                model_path2 = os.path.dirname(model_path2)  # 获取文件夹路径
-            elif model_path2.endswith(os.sep):  # 如果是目录路径
-                model_path2 = model_path2  # 保持目录路径
-            default_object_model_out_path = model_path2
-
-        default_deal_style_out_path = default_object_model_out_path+"/data"
-        default_model_out_path = default_object_model_out_path+"/g_model"
-
+        # 数据处理
         if image_path_in is None:
             print("Please input image path")
             return   
-        # load color    
-        color_paths = sorted([image_path_in + "/" + f for f in os.listdir(image_path_in) if f.endswith('.png') or f.endswith('.jpg')])
-        # color_paths = sorted(color_paths, key=extract_number)
-        # load depth
-        depth_paths = []
-        if depth_images_in is None:
-            if os.path.exists(default_depth_out_path):
-                 shutil.rmtree(default_depth_out_path)
-            self.__depth_creator.aicg_depth_create(rgb_images_in=image_path_in, save_output_path=default_depth_out_path,recon_data=recon_data)
-            depth_images_in = default_depth_out_path
-
-        
-        depth_paths = sorted([depth_images_in + "/" + f for f in os.listdir(depth_images_in) if f.endswith('.png')])
-        # depth_paths = sorted(depth_paths, key=extract_number)
-        
-        camera_intrinsic =""
-        depth_scale = 21.845
-        poses = []
-        sence_type=0
-        if recon_data is None:
-            if os.path.exists(default_point_out_path):
-                 shutil.rmtree(default_point_out_path)
-            self.__point_creator.aicg_point_create(rgb_images_in=image_path_in, save_output_path=default_point_out_path,recon_data=recon_data)
-            cam_intrinsics = self.__point_creator.colmapConverter.getCameraIntrinsics(default_point_out_path)
-            cam_extrinsics = self.__point_creator.colmapConverter.getCameraExtrinsics(default_point_out_path)
-            camera_intrinsic=cam_intrinsics
-            poses=cam_extrinsics
-        else:
-            depth_scale = recon_data.get_depth_scale()
-            if recon_data.get_camera_intrinsics() is None:
-                if os.path.exists(default_point_out_path):
-                    shutil.rmtree(default_point_out_path)
-                self.__point_creator.aicg_point_create(rgb_images_in=image_path_in, save_output_path=default_point_out_path,recon_data=recon_data)
-                cam_intrinsics = self.__point_creator.colmapConverter.getCameraIntrinsics(default_point_out_path)
-                cam_extrinsics = self.__point_creator.colmapConverter.getCameraExtrinsics(default_point_out_path)
-                camera_intrinsic=cam_intrinsics
-                poses=cam_extrinsics
-            else:
-                camera_intrinsic=recon_data.get_camera_intrinsics()
-            if recon_data.get_camera_extrinsics() is not None:
-                poses=recon_data.get_camera_extrinsics()
-            pass
-       
+        sence_type = self.__style_dealer.sence_type
+        depth_scale = self.__style_dealer.depth_scale
+        save_output_path,default_deal_style_out_path,default_model_out_path,default_texture_out_path = self.__style_dealer.unified_output_format(save_output_path,default_object_model_out_path)
+        color_paths,depth_paths,camera_intrinsic,poses,depth_scale =self.__style_dealer.loadData(self.__point_creator,image_path_in,depth_images_in,recon_data)
+        # 重建流程
         NeuralRGBD.data_style_deal(color_paths=color_paths,depth_paths=depth_paths,poses=poses,camera_intrinsic=camera_intrinsic,output_path=default_deal_style_out_path,depth_scale=depth_scale,sence_type=sence_type)
         ObjectSReconstruction.entrypoint(path_in=default_deal_style_out_path, save_output_path=default_model_out_path,iteration=iteration,sence_type=sence_type)
         print("save_output_path",save_output_path)
         ExtractMesh.entrypoint(default_model_out_path+"/config.yml",save_output_path,sence_type)
-        ExtractTextureMesh.entrypoint(default_model_out_path+"/config.yml",save_output_path,default_object_model_out_path+"/texture")
+        ExtractTextureMesh.entrypoint(default_model_out_path+"/config.yml",save_output_path,default_texture_out_path)
         pass

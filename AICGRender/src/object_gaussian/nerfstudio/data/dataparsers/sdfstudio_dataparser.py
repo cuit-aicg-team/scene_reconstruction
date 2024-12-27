@@ -192,6 +192,9 @@ class SDFStudio(DataParser):
 
     config: SDFStudioDataParserConfig
 
+    def _setPathData(self,data_path):
+        self.config.data = Path(data_path)
+
     def _generate_dataparser_outputs(self, split="train"):  # pylint: disable=unused-argument,too-many-statements
         # load meta data
         meta = load_from_json(self.config.data / "meta_data.json")

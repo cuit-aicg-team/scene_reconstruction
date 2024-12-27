@@ -23,8 +23,10 @@ import AICGRender.src.outdoor_gaussian.train as OutdoorReconstruction
 import AICGRender.src.outdoor_gaussian.render_new_view as OutdoorNewViewRender
 
 import AICGRender.src.object_gaussian.scripts.train as ObjectSReconstruction
+
 import AICGRender.src.object_gaussian.scripts.extract_mesh as ExtractMesh
 import AICGRender.src.object_gaussian.scripts.texture as ExtractTextureMesh
+import AICGRender.src.object_gaussian.scripts.render as ExtractNewViewRender
 
 import AICGRender.src.object_gaussian.scripts.datasets.process_neuralrgbd_to_sdfstudio_game as NeuralRGBD
 import re
@@ -425,6 +427,7 @@ class StyleDealer:
         # depth_paths = sorted(depth_paths, key=extract_number)
         
         camera_intrinsic =""
+        depth_scale = self.depth_scale
         poses = []
         if recon_data is None:
             if os.path.exists(default_point_out_path):
@@ -493,7 +496,7 @@ class OutdoorsceneReconstruction:
         '''
         return self.__point_creator.aicg_point_create(rgb_images_in=rgb_images_in, save_output_path=save_output_path,recon_data=recon_data)
 
-    def aicg_outdoor_render_images(self,reconstruct_model_path=None,point_path_in =None ,save_output_path=None,camera_extrinsics=None,camera_intrinsics=None,recon_data: ReconstructData = None):
+    def aicg_outdoor_render_images(self,gaussian_model_path=None,point_path_in =None ,save_output_path=None,recon_data: ReconstructData = None):
         '''
         Rendering new perspective images
         Input:
@@ -507,11 +510,11 @@ class OutdoorsceneReconstruction:
         '''
         if save_output_path is None:
             save_output_path = default_outdoor_render_out_path
-        if reconstruct_model_path is None:
-            reconstruct_model_path = default_outdoor_model_out_path
+        if gaussian_model_path is None:
+            gaussian_model_path = default_outdoor_model_out_path
         if point_path_in is None:
             point_path_in = self.__point_creator.outdir if self.__point_creator.outdir is not None else default_point_out_path
-        OutdoorNewViewRender.run(point_path_in,reconstruct_model_path,save_output_path)
+        OutdoorNewViewRender.run(point_path_in,gaussian_model_path,save_output_path)
         pass
 
     def aicg_outdoor_mesh_reconstruct(self, point_path_in=None, depth_images_in=None, save_output_path=None, iteration=30000, recon_data: ReconstructData = None):
@@ -581,7 +584,7 @@ class IndoorsceneReconstruction:
         '''
         return self.__point_creator.aicg_point_create(rgb_images_in=rgb_images_in, save_output_path=save_output_path,recon_data=recon_data)
 
-    def aicg_indoor_render_images(self,reconstruct_model_path=None,camera_extrinsics=None,camera_intrinsics=None,save_output_path=None,recon_data: ReconstructData = None):
+    def aicg_indoor_render_images(self,reconstruct_model_path=None,save_output_path=None,recon_data: ReconstructData = None):
         '''
         Rendering new perspective images
         Input:
@@ -593,6 +596,17 @@ class IndoorsceneReconstruction:
         return:
             render images (nd.array): Rendered images
         '''
+        if save_output_path is None:
+            save_output_path=reconstruct_model_path+"/render"
+
+        model_path2 = reconstruct_model_path
+        if model_path2.endswith('.ply') or model_path2.endswith('.obj'):
+            model_path2 = os.path.dirname(model_path2)  # 获取文件夹路径
+        elif model_path2.endswith(os.sep):  # 如果是目录路径
+            model_path2 = model_path2  # 保持目录路径
+        else:
+            print("Please input a valid save_output_path")    
+        ExtractNewViewRender.entrypoint(model_path2+"/g_model/config.yml",save_output_path)
         pass
 
     def aicg_indoor_mesh_reconstruct(self, image_path_in=None, depth_images_in=None, save_output_path=None, iteration=30000,save_format='.ply', recon_data: ReconstructData = None):
@@ -612,19 +626,26 @@ class IndoorsceneReconstruction:
             print("Please input image path")
             return 
         sence_type = self.__style_dealer.sence_type
-        depth_scale = self.__style_dealer.depth_scale
         save_output_path,default_deal_style_out_path,default_model_out_path,default_texture_out_path = self.__style_dealer.unified_output_format(save_output_path,default_indoor_model_out_path)
 
         if not recon_data.skip_train:
             color_paths,depth_paths,camera_intrinsic,poses,depth_scale =self.__style_dealer.loadData(self.__point_creator,image_path_in,depth_images_in,recon_data)
             NeuralRGBD.data_style_deal(color_paths=color_paths,depth_paths=depth_paths,poses=poses,camera_intrinsic=camera_intrinsic,output_path=default_deal_style_out_path,depth_scale=depth_scale,sence_type=sence_type)
             ObjectSReconstruction.entrypoint(path_in=default_deal_style_out_path, save_output_path=default_model_out_path,iteration=iteration,sence_type=sence_type)
+            default_model_out_path= default_model_out_path+"/config.yml"
         else:
-            default_model_out_path = recon_data.trained_model_path
+            if recon_data.trained_model_path is None:
+                print("Please input trained model path")
+                return
+            default_model_out_path = recon_data.trained_model_path+"/config.yml"
+
+            if not os.path.exists(default_model_out_path):
+                print("trained model path is error")
+                return
 
         print("save_output_path",save_output_path)
-        ExtractMesh.entrypoint(default_model_out_path+"/config.yml",save_output_path,sence_type,load_iteration = recon_data.load_iteration)
-        ExtractTextureMesh.entrypoint(default_model_out_path+"/config.yml",save_output_path,default_texture_out_path,load_iteration = recon_data.load_iteration)
+        ExtractMesh.entrypoint(default_model_out_path,save_output_path,sence_type,load_iteration = recon_data.load_iteration)
+        ExtractTextureMesh.entrypoint(default_model_out_path,save_output_path,default_texture_out_path,load_iteration = recon_data.load_iteration)
         pass
 
 
@@ -672,7 +693,7 @@ class ObjectReconstruction:
         '''
         return self.__point_creator.aicg_point_create(rgb_images_in=rgb_images_in, save_output_path=save_output_path,recon_data=recon_data)
 
-    def aicg_object_render_images(self,reconstruct_model_path=None,camera_extrinsics=None,camera_intrinsics=None,save_output_path=None,recon_data: ReconstructData = None):
+    def aicg_object_render_images(self,reconstruct_model_path=None,save_output_path=None,recon_data: ReconstructData = None):
         '''
         Rendering new perspective images
         Input:
@@ -684,6 +705,17 @@ class ObjectReconstruction:
         return:
             render images (nd.array): Rendered images
         '''
+        if save_output_path is None:
+            save_output_path=reconstruct_model_path+"/render"
+
+        model_path2 = reconstruct_model_path
+        if model_path2.endswith('.ply') or model_path2.endswith('.obj'):
+            model_path2 = os.path.dirname(model_path2)  # 获取文件夹路径
+        elif model_path2.endswith(os.sep):  # 如果是目录路径
+            model_path2 = model_path2  # 保持目录路径
+        else:
+            print("Please input a valid save_output_path")        
+        ExtractNewViewRender.entrypoint(model_path2+"/g_model/config.yml",save_output_path)
         pass
 
     def aicg_object_mesh_reconstruct(self, image_path_in=None, depth_images_in=None, save_output_path=None, iteration=30000, recon_data: ReconstructData = None):
@@ -705,7 +737,7 @@ class ObjectReconstruction:
             print("Please input image path")
             return
         sence_type = self.__style_dealer.sence_type
-        depth_scale = self.__style_dealer.depth_scale
+
         save_output_path, default_deal_style_out_path, default_model_out_path, default_texture_out_path = self.__style_dealer.unified_output_format(
             save_output_path, default_object_model_out_path)
         if not recon_data.skip_train:
@@ -713,10 +745,17 @@ class ObjectReconstruction:
             # # 重建流程
             NeuralRGBD.data_style_deal(color_paths=color_paths,depth_paths=depth_paths,poses=poses,camera_intrinsic=camera_intrinsic,output_path=default_deal_style_out_path,depth_scale=depth_scale,sence_type=sence_type)
             ObjectSReconstruction.entrypoint(path_in=default_deal_style_out_path, save_output_path=default_model_out_path,iteration=iteration,sence_type=sence_type)
+            default_model_out_path= default_model_out_path+"/config.yml"
         else:
-            default_model_out_path = recon_data.trained_model_path
-
+            if recon_data.trained_model_path is None:
+                print("Please input trained model path")
+                return
+            default_model_out_path = recon_data.trained_model_path+"/config.yml"
+            if not os.path.exists(default_model_out_path):
+                print("trained model path is error")
+                return
+         
         print("save_output_path",save_output_path)
-        ExtractMesh.entrypoint(default_model_out_path+"/config.yml",save_output_path,sence_type,load_iteration = recon_data.load_iteration)
-        ExtractTextureMesh.entrypoint(default_model_out_path+"/config.yml",save_output_path,default_texture_out_path,load_iteration = recon_data.load_iteration)
+        # ExtractMesh.entrypoint(default_model_out_path,save_output_path,sence_type,load_iteration = recon_data.load_iteration)
+        ExtractTextureMesh.entrypoint(default_model_out_path,save_output_path,default_texture_out_path,load_iteration = recon_data.load_iteration)
         pass

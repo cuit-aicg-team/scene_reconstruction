@@ -15,6 +15,7 @@ import numpy as np
 import open3d as o3d
 import torch
 import tyro
+import sys
 from rich.console import Console
 from scipy.interpolate import interp1d
 from scipy.spatial.transform import Rotation, Slerp
@@ -75,7 +76,7 @@ def _render_trajectory_video(
     rendered_output_names: str,
     rendered_resolution_scaling_factor: float = 1.0,
     seconds: float = 5.0,
-    output_format: Literal["images", "video"] = "video",
+    output_format: Literal["images", "video"] = "images",
     merge_type: Literal["half", "concat"] = "half",
 ) -> None:
     """Helper function to create a video of the spiral trajectory.
@@ -89,7 +90,7 @@ def _render_trajectory_video(
         seconds: Length of output video.
         output_format: How to save output data.
     """
-    CONSOLE.print("[bold green]Creating trajectory video")
+    CONSOLE.print("[bold green]Creating new view image")
     images = []
     cameras.rescale_output_resolution(rendered_resolution_scaling_factor)
     # cameras = cameras.to(pipeline.device)
@@ -101,11 +102,11 @@ def _render_trajectory_video(
     ply.compute_vertex_normals()
     ply.paint_uniform_color([1, 1, 1])
 
-    vis = o3d.visualization.VisualizerWithKeyCallback()
-    vis.create_window("rendering", width=width, height=height)
+    # vis = o3d.visualization.VisualizerWithKeyCallback()
+    # vis.create_window("rendering", width=width, height=height)
 
-    vis.add_geometry(ply)
-    vis.get_render_option().load_from_json("scripts/render.json")
+    # vis.add_geometry(ply)
+    # vis.get_render_option().load_from_json("scripts/render.json")
 
     output_image_dir = output_filename.parent / output_filename.stem
     for render_name in rendered_output_names:
@@ -124,7 +125,7 @@ def _render_trajectory_video(
         # 2. index++, check ending criteria
         # 3. Set camera
         # 4. (Re-render)
-        ctr = vis.get_view_control()
+        # ctr = vis.get_view_control()
         nonlocal index
         nonlocal cameras
         nonlocal rendered_images
@@ -133,12 +134,12 @@ def _render_trajectory_video(
             for render_name in rendered_output_names:
                 output_image_dir_cur = output_image_dir / render_name
 
-                if render_name == "normal":
-                    vis.get_render_option().mesh_color_option = o3d.visualization.MeshColorOption.Normal
-                elif render_name == "rgb":
-                    vis.get_render_option().mesh_color_option = o3d.visualization.MeshColorOption.Color
+                # if render_name == "normal":
+                #     # vis.get_render_option().mesh_color_option = o3d.visualization.MeshColorOption.Normal
+                # elif render_name == "rgb":
+                #     vis.get_render_option().mesh_color_option = o3d.visualization.MeshColorOption.Color
 
-                vis.capture_screen_image(str(output_image_dir_cur / f"{index:05d}.png"), True)
+                # vis.capture_screen_image(str(output_image_dir_cur / f"{index:05d}.png"), True)
 
                 images.append(cv2.imread(str(output_image_dir_cur / f"{index:05d}.png"))[:, :, ::-1])
             if merge_type == "concat":
@@ -149,34 +150,34 @@ def _render_trajectory_video(
                 images = images[0] * mask + images[1] * (1 - mask)
             rendered_images.append(images)
         index = index + 1
-        if index < num_frames:
+        # if index < num_frames:
 
-            param = ctr.convert_to_pinhole_camera_parameters()
-            camera = cameras[index]
-            width = camera.width[0].item()
-            height = camera.height[0].item()
-            fx = camera.fx[0].item()
-            fy = camera.fy[0].item()
-            cx = camera.cx[0].item()
-            cy = camera.cy[0].item()
-            camera = cameras[index]
+            # param = ctr.convert_to_pinhole_camera_parameters()
+            # camera = cameras[index]
+            # width = camera.width[0].item()
+            # height = camera.height[0].item()
+            # fx = camera.fx[0].item()
+            # fy = camera.fy[0].item()
+            # cx = camera.cx[0].item()
+            # cy = camera.cy[0].item()
+            # camera = cameras[index]
 
-            param.intrinsic.set_intrinsics(width=width, height=height, fx=fx, fy=fy, cx=cx, cy=cy)
+            # param.intrinsic.set_intrinsics(width=width, height=height, fx=fx, fy=fy, cx=cx, cy=cy)
 
-            extrinsic = np.eye(4)
-            extrinsic[:3, :] = camera.camera_to_worlds.cpu().numpy()
-            extrinsic[:3, 1:3] *= -1
-            param.extrinsic = np.linalg.inv(extrinsic)
+            # extrinsic = np.eye(4)
+            # extrinsic[:3, :] = camera.camera_to_worlds.cpu().numpy()
+            # extrinsic[:3, 1:3] *= -1
+            # param.extrinsic = np.linalg.inv(extrinsic)
 
-            ctr.convert_from_pinhole_camera_parameters(param, allow_arbitrary=True)
-        else:
-            vis.register_animation_callback(None)
-            vis.destroy_window()
+            # ctr.convert_from_pinhole_camera_parameters(param, allow_arbitrary=True)
+        # else:
+        #     vis.register_animation_callback(None)
+        #     vis.destroy_window()
 
         return False
 
-    vis.register_animation_callback(move_forward)
-    vis.run()
+    # vis.register_animation_callback(move_forward)
+    # vis.run()
     if output_format == "video":
         fps = len(rendered_images) / seconds
         # rendered_images = rendered_images + rendered_images[::-1]
@@ -189,10 +190,11 @@ class RenderTrajectory:
 
     # Path to config YAML file.
     meshfile: Path
+    meatJson: str
     # Name of the renderer outputs to use. rgb, depth, etc. concatenates them along y axis
     rendered_output_names: List[str] = field(default_factory=lambda: ["rgb", "normal"])
     #  Trajectory to render.
-    traj: Literal["spiral", "filename", "interpolate", "ellipse"] = "spiral"
+    traj: Literal["spiral", "filename", "interpolate", "ellipse"] = "interpolate"
     # Scaling factor to apply to the camera image resolution.
     downscale_factor: int = 1
     # Filename of the camera path to render.
@@ -204,7 +206,7 @@ class RenderTrajectory:
     # pfs of the video
     fps: int = 24
     # How to save output data.
-    output_format: Literal["images", "video"] = "video"
+    output_format: Literal["images", "video"] = "images"
     merge_type: Literal["half", "concat"] = "half"
 
     data: AnnotatedDataParserUnion = SDFStudioDataParserConfig()
@@ -215,6 +217,7 @@ class RenderTrajectory:
 
         install_checks.check_ffmpeg_installed()
         seconds = self.seconds
+        self.data.setup()._setPathData(self.meatJson)
         if self.output_format == "video":
             assert str(self.output_path)[-4:] == ".mp4"
 
@@ -224,7 +227,6 @@ class RenderTrajectory:
             seconds = camera_path["seconds"]
             camera_path = get_path_from_json(camera_path)
         elif self.traj == "interpolate":
-            # load training data and interpolate path
             outputs = self.data.setup()._generate_dataparser_outputs()
             camera_path = _interpolate_trajectory(cameras=outputs.cameras, num_views=self.num_views)
             seconds = camera_path.size / 24
@@ -251,14 +253,13 @@ class RenderTrajectory:
         )
 
 
-def entrypoint():
+def entrypoint(mode_config,meat_json_path,save_path):
+    sys.argv = [
+        " ",
+        "--meshfile", mode_config,
+        "--output_path", save_path,
+        "--meatJson", meat_json_path
+    ]
     """Entrypoint for use with pyproject scripts."""
     tyro.extras.set_accent_color("bright_yellow")
     tyro.cli(RenderTrajectory).main()
-
-
-if __name__ == "__main__":
-    entrypoint()
-
-# For sphinx docs
-get_parser_fn = lambda: tyro.extras.get_parser(RenderTrajectory)  # noqa

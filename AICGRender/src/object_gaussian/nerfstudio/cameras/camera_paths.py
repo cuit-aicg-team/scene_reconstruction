@@ -25,7 +25,6 @@ from ...nerfstudio.utils import poses as pose_utils
 from ...nerfstudio.cameras import camera_utils
 from ...nerfstudio.cameras.camera_utils import get_interpolated_poses_many
 from ...nerfstudio.cameras.cameras import Cameras
-from ...nerfstudio.viewer.server.utils import three_js_perspective_camera_focal_length
 
 
 def get_interpolated_camera_path(cameras: Cameras, steps: int) -> Cameras:
@@ -110,6 +109,20 @@ def get_spiral_path(
         cy=camera.cy[0],
         camera_to_worlds=new_c2ws,
     )
+
+def three_js_perspective_camera_focal_length(fov: float, image_height: int):
+    """Returns the focal length of a three.js perspective camera.
+
+    Args:
+        fov: the field of view of the camera in degrees.
+        image_height: the height of the image in pixels.
+    """
+    if fov is None:
+        print("Warning: fov is None, using default value")
+        return 50
+    pp_h = image_height / 2.0
+    focal_length = pp_h / np.tan(fov * (np.pi / 180.0) / 2.0)
+    return focal_length
 
 
 def get_path_from_json(camera_path: Dict[str, Any]) -> Cameras:

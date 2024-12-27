@@ -292,9 +292,9 @@ class GaussianExtractor(object):
     def export_image(self, path):
         render_path = os.path.join(path, "renders")
         gts_path = os.path.join(path, "gt")
-        vis_path = os.path.join(path, "vis")
+        # vis_path = os.path.join(path, "vis")
         os.makedirs(render_path, exist_ok=True)
-        os.makedirs(vis_path, exist_ok=True)
+        # os.makedirs(vis_path, exist_ok=True)
         os.makedirs(gts_path, exist_ok=True)
         for idx, viewpoint_cam in tqdm(enumerate(self.viewpoint_stack), desc="export images"):
             gt = viewpoint_cam.original_image[0:3, :, :]

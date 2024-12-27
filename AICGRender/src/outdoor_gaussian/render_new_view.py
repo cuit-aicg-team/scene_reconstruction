@@ -74,7 +74,7 @@ class OptimizationParams():
 
 
 
-def run(colmap_path,gaussian_model_path,save_path):
+def run(colmap_path,gaussian_model_path):
 
     # Set up command line argument parser
     # parser = ArgumentParser(description="Testing script parameters")
@@ -88,7 +88,7 @@ def run(colmap_path,gaussian_model_path,save_path):
     print("Rendering " + model.model_path)
  # -s colmap_path -m 
     dataset, iteration, pipe = model, model.iteration, pipeline
-    print("dafsf -                  ----------------------------------------- ",dataset)
+    # print("dafsf -                  ----------------------------------------- ",dataset)
     gaussians = GaussianModel(dataset.sh_degree)
     scene = Scene(dataset, gaussians, load_iteration=iteration, shuffle=False)
     bg_color = [1, 1, 1] if dataset.white_background else [0, 0, 0]

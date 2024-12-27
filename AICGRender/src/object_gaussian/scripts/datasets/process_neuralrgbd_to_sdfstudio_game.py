@@ -69,37 +69,10 @@ def data_style_deal(color_paths,depth_paths,poses,camera_intrinsic,output_path,d
     output_path = Path(output_path) # "data/custom/scannet_scene0050_00"
     # print("color_paths ----",color_paths)
     output_path.mkdir(parents=True, exist_ok=True)
-    # output_path = Path(args.output_path)  # "data/neural_rgbd/breakfast_room/"
-    # input_path = Path(args.input_path)  # "data/neural_rgbd_data/breakfast_room/"
 
-    # output_path.mkdir(parents=True, exist_ok=True)
-
-    # # load color
-    # color_path = input_path / "images"
-    # color_paths = sorted(glob.glob(os.path.join(color_path, "*.png")), key=alphanum_key)
-
-    # # load depth
-    # depth_path = input_path / "depth_filtered"
-    # depth_paths = sorted(glob.glob(os.path.join(depth_path, "*.png")), key=alphanum_key)
 
     H, W = cv2.imread(color_paths[0]).shape[:2]
-    # print(H, W)
 
-    # # load intrinsic
-    # intrinsic_path = input_path / "focal.txt"
-    # focal_length = np.loadtxt(intrinsic_path)
-
-    # camera_intrinsic = np.eye(4)
-    # camera_intrinsic[0, 0] = focal_length
-    # camera_intrinsic[1, 1] = focal_length
-    # camera_intrinsic[0, 2] = W * 0.5
-    # camera_intrinsic[1, 2] = H * 0.5
-
-    # print(camera_intrinsic)
-    # # load pose
-
-    # pose_path = input_path / "poses.txt"
-    # poses, valid_poses = load_poses(pose_path)
     poses = np.array(poses)
     valid_poses = np.isfinite(poses).all(axis=2).all(axis=1)
     # print(poses.shape)

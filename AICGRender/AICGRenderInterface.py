@@ -431,7 +431,7 @@ class OutdoorsceneReconstruction:
         OutdoorNewViewRender.run(point_path_in,reconstruct_model_path,save_output_path)
         pass
 
-    def aicg_outdoor_mesh_reconstruct(self, point_path_in=None, depth_images_in=None, save_output_path=None, iteration=30000,save_format='.ply', recon_data: ReconstructData = None):
+    def aicg_outdoor_mesh_reconstruct(self, point_path_in=None, depth_images_in=None, save_output_path=None, iteration=30000, recon_data: ReconstructData = None,skip_train=False,trained_model_path=None,load_iteration=-1):
         '''
         Generate a mesh
         Input:
@@ -449,7 +449,7 @@ class OutdoorsceneReconstruction:
         if save_output_path is None:
             save_output_path = default_outdoor_model_out_path
              
-        OutdoorReconstruction.run(point_path_in,save_output_path,iteration,save_format)
+        OutdoorReconstruction.run(point_path_in,save_output_path,iteration,skip_train=skip_train,trained_model_path=trained_model_path,load_iteration=load_iteration)
         pass
 
 

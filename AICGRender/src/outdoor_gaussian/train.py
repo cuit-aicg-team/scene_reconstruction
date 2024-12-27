@@ -33,7 +33,7 @@ except ImportError:
     TENSORBOARD_FOUND = False
 
 
-def save_mesh(mesh: o3d.geometry.TriangleMesh, save_path: str,save_format: str = '.ply'):
+def save_mesh(mesh: o3d.geometry.TriangleMesh, save_path: str):
     """
     将 Open3D 格式的网格保存为指定路径的文件，支持 .obj, .ply, .fbx 格式。
     :param mesh: open3d.geometry.TriangleMesh 类型的网格对象
@@ -320,7 +320,7 @@ def training_report(tb_writer, iteration, Ll1, loss, l1_loss, elapsed, testing_i
 
         torch.cuda.empty_cache()
 
-def run(point_path_in,save_output_path,iteration,save_format,skip_train=False,trained_model_path=None,load_iteration=-1):
+def run(point_path_in,save_output_path,iteration,skip_train=False,trained_model_path=None,load_iteration=-1):
     # Set up command line argument parser
     parser = ArgumentParser(description="Training script parameters")
     lp = ModelParams(parser)
@@ -343,7 +343,6 @@ def run(point_path_in,save_output_path,iteration,save_format,skip_train=False,tr
     parser.add_argument("--save_iterations", nargs="+", type=int, default=[30_000])
 
 
-    parser.add_argument("--save_format", type=str, default = save_format)
     parser.add_argument("--save_mesh_path", type=str, default = save_output_path)
     parser.add_argument('--train_iterations', type=int, default=iteration)
     parser.add_argument("--voxel_size", default=-1.0, type=float, help='Mesh: voxel size for TSDF')

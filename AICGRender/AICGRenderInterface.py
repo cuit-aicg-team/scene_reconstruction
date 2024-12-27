@@ -76,7 +76,8 @@ def convert_8bit_rgb_to_16bit_grayscale(img, gamma=2.2):
     return gray_img_16bit
 
 class ReconstructData:
-    def __init__(self, rgb_images=None, depth_images=None, camera_extrinsics=None, camera_intrinsics=None, point_cloud=None,other_param=None,reconstruct_model=None,depth_scale =21.845,**kwargs):
+    def __init__(self, rgb_images=None, depth_images=None, camera_extrinsics=None, camera_intrinsics=None, point_cloud=None,other_param=None,reconstruct_model=None,depth_scale =21.845,
+                 skip_train=False,trained_model_path=None,load_iteration=-1,**kwargs):
         self.__rgb_images = rgb_images
         self.__depth_images = depth_images
         self.__depth_scale = depth_scale
@@ -84,7 +85,11 @@ class ReconstructData:
         self.__camera_intrinsics = camera_intrinsics
         self.__point_cloud = point_cloud
         self.__reconstruct_model = reconstruct_model
+        self.skip_train=skip_train
+        self.trained_model_path=trained_model_path
+        self.load_iteration=load_iteration
         self.__params = kwargs
+
     def set_rgb_images(self, rgb_images):
         self.__rgb_images = rgb_images
 
@@ -509,7 +514,7 @@ class OutdoorsceneReconstruction:
         OutdoorNewViewRender.run(point_path_in,reconstruct_model_path,save_output_path)
         pass
 
-    def aicg_outdoor_mesh_reconstruct(self, point_path_in=None, depth_images_in=None, save_output_path=None, iteration=30000, recon_data: ReconstructData = None,skip_train=False,trained_model_path=None,load_iteration=-1):
+    def aicg_outdoor_mesh_reconstruct(self, point_path_in=None, depth_images_in=None, save_output_path=None, iteration=30000, recon_data: ReconstructData = None):
         '''
         Generate a mesh
         Input:
@@ -526,8 +531,9 @@ class OutdoorsceneReconstruction:
             point_path_in = self.__point_creator.outdir if self.__point_creator.outdir is not None else default_point_out_path
         if save_output_path is None:
             save_output_path = default_outdoor_model_out_path
+
              
-        OutdoorReconstruction.run(point_path_in,save_output_path,iteration,skip_train=skip_train,trained_model_path=trained_model_path,load_iteration=load_iteration)
+        OutdoorReconstruction.run(point_path_in,save_output_path,iteration,skip_train=recon_data.skip_train,trained_model_path=recon_data.trained_model_path,load_iteration=recon_data.load_iteration)
         pass
 
 
@@ -608,14 +614,17 @@ class IndoorsceneReconstruction:
         sence_type = self.__style_dealer.sence_type
         depth_scale = self.__style_dealer.depth_scale
         save_output_path,default_deal_style_out_path,default_model_out_path,default_texture_out_path = self.__style_dealer.unified_output_format(save_output_path,default_indoor_model_out_path)
-        color_paths,depth_paths,camera_intrinsic,poses,depth_scale =self.__style_dealer.loadData(self.__point_creator,image_path_in,depth_images_in,recon_data)
-       
-     
-        NeuralRGBD.data_style_deal(color_paths=color_paths,depth_paths=depth_paths,poses=poses,camera_intrinsic=camera_intrinsic,output_path=default_deal_style_out_path,depth_scale=depth_scale,sence_type=sence_type)
-        ObjectSReconstruction.entrypoint(path_in=default_deal_style_out_path, save_output_path=default_model_out_path,iteration=iteration,sence_type=sence_type)
+
+        if not recon_data.skip_train:
+            color_paths,depth_paths,camera_intrinsic,poses,depth_scale =self.__style_dealer.loadData(self.__point_creator,image_path_in,depth_images_in,recon_data)
+            NeuralRGBD.data_style_deal(color_paths=color_paths,depth_paths=depth_paths,poses=poses,camera_intrinsic=camera_intrinsic,output_path=default_deal_style_out_path,depth_scale=depth_scale,sence_type=sence_type)
+            ObjectSReconstruction.entrypoint(path_in=default_deal_style_out_path, save_output_path=default_model_out_path,iteration=iteration,sence_type=sence_type)
+        else:
+            default_model_out_path = recon_data.trained_model_path
+
         print("save_output_path",save_output_path)
-        ExtractMesh.entrypoint(default_model_out_path+"/config.yml",save_output_path,sence_type)
-        ExtractTextureMesh.entrypoint(default_model_out_path+"/config.yml",save_output_path,default_texture_out_path)
+        ExtractMesh.entrypoint(default_model_out_path+"/config.yml",save_output_path,sence_type,load_iteration = recon_data.load_iteration)
+        ExtractTextureMesh.entrypoint(default_model_out_path+"/config.yml",save_output_path,default_texture_out_path,load_iteration = recon_data.load_iteration)
         pass
 
 
@@ -677,7 +686,7 @@ class ObjectReconstruction:
         '''
         pass
 
-    def aicg_object_mesh_reconstruct(self, image_path_in=None, depth_images_in=None, save_output_path=None, iteration=30000,save_format='.ply', recon_data: ReconstructData = None):
+    def aicg_object_mesh_reconstruct(self, image_path_in=None, depth_images_in=None, save_output_path=None, iteration=30000, recon_data: ReconstructData = None):
         '''
         Generate a mesh
         Input:
@@ -690,18 +699,24 @@ class ObjectReconstruction:
         return:
             mesh (trimesh.Trimesh): Mesh object
         '''
+
         # 数据处理
         if image_path_in is None:
             print("Please input image path")
-            return   
+            return
         sence_type = self.__style_dealer.sence_type
         depth_scale = self.__style_dealer.depth_scale
-        save_output_path,default_deal_style_out_path,default_model_out_path,default_texture_out_path = self.__style_dealer.unified_output_format(save_output_path,default_object_model_out_path)
-        color_paths,depth_paths,camera_intrinsic,poses,depth_scale =self.__style_dealer.loadData(self.__point_creator,image_path_in,depth_images_in,recon_data)
-        # 重建流程
-        NeuralRGBD.data_style_deal(color_paths=color_paths,depth_paths=depth_paths,poses=poses,camera_intrinsic=camera_intrinsic,output_path=default_deal_style_out_path,depth_scale=depth_scale,sence_type=sence_type)
-        ObjectSReconstruction.entrypoint(path_in=default_deal_style_out_path, save_output_path=default_model_out_path,iteration=iteration,sence_type=sence_type)
+        save_output_path, default_deal_style_out_path, default_model_out_path, default_texture_out_path = self.__style_dealer.unified_output_format(
+            save_output_path, default_object_model_out_path)
+        if not recon_data.skip_train:
+            color_paths,depth_paths,camera_intrinsic,poses,depth_scale =self.__style_dealer.loadData(self.__point_creator,image_path_in,depth_images_in,recon_data)
+            # # 重建流程
+            NeuralRGBD.data_style_deal(color_paths=color_paths,depth_paths=depth_paths,poses=poses,camera_intrinsic=camera_intrinsic,output_path=default_deal_style_out_path,depth_scale=depth_scale,sence_type=sence_type)
+            ObjectSReconstruction.entrypoint(path_in=default_deal_style_out_path, save_output_path=default_model_out_path,iteration=iteration,sence_type=sence_type)
+        else:
+            default_model_out_path = recon_data.trained_model_path
+
         print("save_output_path",save_output_path)
-        ExtractMesh.entrypoint(default_model_out_path+"/config.yml",save_output_path,sence_type)
-        ExtractTextureMesh.entrypoint(default_model_out_path+"/config.yml",save_output_path,default_texture_out_path)
+        ExtractMesh.entrypoint(default_model_out_path+"/config.yml",save_output_path,sence_type,load_iteration = recon_data.load_iteration)
+        ExtractTextureMesh.entrypoint(default_model_out_path+"/config.yml",save_output_path,default_texture_out_path,load_iteration = recon_data.load_iteration)
         pass

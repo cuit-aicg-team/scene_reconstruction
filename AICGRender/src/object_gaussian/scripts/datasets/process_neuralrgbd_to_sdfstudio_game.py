@@ -66,7 +66,7 @@ def load_poses(posefile):
 
 # type : choices=["mono_prior", "sensor_depth"]
 def data_style_deal(color_paths,depth_paths,poses,camera_intrinsic,output_path,depth_scale,type="sensor_depth",sence_type=0):
-    output_path = Path(output_path)  # "data/custom/scannet_scene0050_00"
+    output_path = Path(output_path) # "data/custom/scannet_scene0050_00"
     # print("color_paths ----",color_paths)
     output_path.mkdir(parents=True, exist_ok=True)
     # output_path = Path(args.output_path)  # "data/neural_rgbd/breakfast_room/"

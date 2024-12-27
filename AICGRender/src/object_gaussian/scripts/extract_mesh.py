@@ -63,6 +63,9 @@ class ExtractMesh:
     sub_sample_factor: int = 8
     """torch precision"""
     torch_precision: Literal["highest", "high"] = "high"
+    """load iteration"""
+    load_iteration: int = -1
+
 
     def getGt(self):
         original_path = str(self.load_config)
@@ -106,7 +109,7 @@ class ExtractMesh:
         torch.set_float32_matmul_precision(self.torch_precision)
         self.output_path.parent.mkdir(parents=True, exist_ok=True)
 
-        _, pipeline, _ = eval_setup(self.load_config)
+        _, pipeline, _ = eval_setup(self.load_config,load_iteration=self.load_iteration)
         CONSOLE.print("Extract mesh with marching cubes and may take a while")
         # print("new point",self.new_view_path)
         # 获取worldtogt  
@@ -180,13 +183,14 @@ class ExtractMesh:
             )
 
 
-def entrypoint(default_config_path,save_output_path,sence_type):
+def entrypoint(default_config_path,save_output_path,sence_type,load_iteration=-1):
     sys.argv = [
         "ns-extract-mesh", 
         "--load-config", default_config_path,
         "--output-path", save_output_path,
         "--sence_type",str(sence_type),# 0:object 1:indoor
         "--gaussian_config" ,"AICGRender/src/object_gaussian/nerfstudio/configs/game1.yaml",
+        "--load_iteration",str(load_iteration)
     ]
     """Entrypoint for use with pyproject scripts."""
     tyro.extras.set_accent_color("bright_yellow")

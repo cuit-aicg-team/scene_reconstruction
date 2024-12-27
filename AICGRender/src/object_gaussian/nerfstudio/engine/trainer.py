@@ -178,8 +178,8 @@ class Trainer:
                     writer.put_dict(name="Train Metrics Dict", scalar_dict=metrics_dict, step=step)
 
                 self.eval_iteration(step)
-
-                if step_check(step, self.config.trainer.steps_per_save):
+                ##############每多少轮保存一次   self.config.trainer.steps_per_save
+                if step_check(step, 10000):
                     self.save_checkpoint(step)
 
                 writer.write_out_storage()

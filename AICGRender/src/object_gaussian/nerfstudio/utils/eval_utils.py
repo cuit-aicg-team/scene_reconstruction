@@ -32,8 +32,7 @@ from ...nerfstudio.pipelines.base_pipeline import Pipeline
 
 CONSOLE = Console(width=120)
 
-
-def eval_load_checkpoint(config: cfg.TrainerConfig, pipeline: Pipeline) -> Path:
+def eval_load_checkpoint(config: cfg.TrainerConfig, pipeline: Pipeline,load_iteration=None) -> Path:
     ## TODO: ideally eventually want to get this to be the same as whatever is used to load train checkpoint too
     """Helper function to load checkpointed pipeline
 
@@ -43,7 +42,7 @@ def eval_load_checkpoint(config: cfg.TrainerConfig, pipeline: Pipeline) -> Path:
     """
     assert config.load_dir is not None
     if config.load_step is None:
-        CONSOLE.print("Loading latest checkpoint from load_dir")
+        # CONSOLE.print("Loading latest checkpoint from load_dir")
         # NOTE: this is specific to the checkpoint name format
         if not os.path.exists(config.load_dir):
             CONSOLE.rule("Error", style="red")
@@ -56,7 +55,16 @@ def eval_load_checkpoint(config: cfg.TrainerConfig, pipeline: Pipeline) -> Path:
         load_step = sorted(int(x[x.find("-") + 1 : x.find(".")]) for x in os.listdir(config.load_dir))[-1]
     else:
         load_step = config.load_step
+
+    if load_iteration:
+        if load_iteration == -1:
+            load_step = sorted(int(x[x.find("-") + 1 : x.find(".")]) for x in os.listdir(config.load_dir))[-1]
+        else:
+            load_step = load_iteration
+        CONSOLE.print("Loading trained model at iteration {}".format(load_step))
+
     load_path = config.load_dir / f"step-{load_step:09d}.ckpt"
+
     assert load_path.exists(), f"Checkpoint {load_path} does not exist"
     loaded_state = torch.load(load_path, map_location="cpu")
     pipeline.load_pipeline(loaded_state["pipeline"])
@@ -68,6 +76,7 @@ def eval_setup(
     config_path: Path,
     eval_num_rays_per_chunk: Optional[int] = None,
     test_mode: Literal["test", "val", "inference"] = "test",
+    load_iteration: Optional[int] = None,
 ) -> Tuple[cfg.Config, Pipeline, Path]:
     """Shared setup for loading a saved pipeline for evaluation.
 
@@ -102,6 +111,6 @@ def eval_setup(
     pipeline.eval()
 
     # load checkpointed information
-    checkpoint_path = eval_load_checkpoint(config.trainer, pipeline)
+    checkpoint_path = eval_load_checkpoint(config.trainer, pipeline,load_iteration)
 
     return config, pipeline, checkpoint_path

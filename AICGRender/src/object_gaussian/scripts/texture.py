@@ -44,6 +44,10 @@ class TextureMesh:
     """If using xatlas for unwrapping, the pixels per side of the texture image."""
     target_num_faces: Optional[int] = 50000
     """Target number of faces for the mesh to texture."""
+    load_iteration: int = -1
+    """load iteration"""
+
+
     def getGt(self):
         original_path = str(self.load_config)
         new_path = original_path.replace('config.yml','gt.txt')  
@@ -92,7 +96,7 @@ class TextureMesh:
         mesh = get_mesh_from_filename(str(self.input_mesh_filename), target_num_faces=self.target_num_faces)
 
         # load the Pipeline
-        _, pipeline, _ = eval_setup(self.load_config, test_mode="inference")
+        _, pipeline, _ = eval_setup(self.load_config, test_mode="inference", load_iteration=self.load_iteration)
 
         # texture the mesh with NeRF and export to a mesh.obj file
         # and a material and texture file
@@ -106,14 +110,15 @@ class TextureMesh:
         )
 
 
-def entrypoint(mode_config,unrgb_model,save_path):
+def entrypoint(mode_config,unrgb_model,save_path,load_iteration=-1):
     # python scripts/texture.py  outputs/neus-facto-dtu65/neus-facto/XXX/config.yml --input-mesh-filename ./meshes/test.ply --output-dir ./textures --target_num_faces 50000
     sys.argv = [
         " ",
         "--load-config", mode_config,
         "--input-mesh-filename", unrgb_model,
         "--output-dir", save_path,
-        "--target-num-faces", str(800000)
+        "--target-num-faces", str(800000),
+        "--load_iteration", str(load_iteration)
     ]
     print(mode_config+" unrgb_model ",unrgb_model, "  save_path ",save_path)
     """Entrypoint for use with pyproject scripts."""

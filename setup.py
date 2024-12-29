@@ -5,7 +5,7 @@ with open("README.md", "r") as fh:
 
 setuptools.setup(
     name="aicg-model-generation",
-    version="0.3.2",
+    version="0.3.4",
     author="aicg",
     author_email="aicg@qq.com",
     description="new sdf package",
@@ -20,6 +20,7 @@ setuptools.setup(
     package_data={
         'AICGRender.src.indoor_gaussian': ['base_config.yaml', 'indoor_re.yaml'],
         'AICGRender.src.object_gaussian.nerfstudio.configs': ['base.yaml', 'game1.yaml'],
+        'AICGRender.pyarmor_runtime_000000': ['pyarmor_runtime.so']
     },
     #  pip install  git+https://github.com/eriksandstroem/evaluate_3d_reconstruction_lib.git@9b3cc08be5440db9c375cc21e3bd65bb4a337db7
     #  pip install  git+https://github.com/VladimirYugay/simple-knn.git@c7e51a06a4cd84c25e769fee29ab391fe5d5ff8d

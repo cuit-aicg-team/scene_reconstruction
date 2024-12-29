@@ -117,7 +117,7 @@ def entrypoint(mode_config,unrgb_model,save_path,load_iteration=-1):
         "--load-config", mode_config,
         "--input-mesh-filename", unrgb_model,
         "--output-dir", save_path,
-        "--target-num-faces", str(80000),
+        "--target-num-faces", str(800000),
         "--load_iteration", str(load_iteration)
     ]
     print(mode_config+" unrgb_model ",unrgb_model, "  save_path ",save_path)

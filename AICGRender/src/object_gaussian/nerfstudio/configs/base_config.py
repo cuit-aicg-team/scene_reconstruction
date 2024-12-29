@@ -94,10 +94,10 @@ class LocalWriterConfig(InstantiateConfig):
     """if True enables local logging, else disables"""
     stats_to_track: Tuple[writer.EventName, ...] = (
         writer.EventName.ITER_TRAIN_TIME,
-        writer.EventName.TRAIN_RAYS_PER_SEC,
-        writer.EventName.CURR_TEST_PSNR,
-        writer.EventName.VIS_RAYS_PER_SEC,
-        writer.EventName.TEST_RAYS_PER_SEC,
+        # writer.EventName.TRAIN_RAYS_PER_SEC,
+        # writer.EventName.CURR_TEST_PSNR,
+        # writer.EventName.VIS_RAYS_PER_SEC,
+        # writer.EventName.TEST_RAYS_PER_SEC,
     )
     """specifies which stats will be logged/printed to terminal"""
     max_log_size: int = 10

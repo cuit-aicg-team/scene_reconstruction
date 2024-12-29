@@ -393,7 +393,7 @@ class LocalWriter:
                     "to disable line wrapping."
                 )
             latest_map, new_key = self._consolidate_events()
-            self._update_header(latest_map, new_key)
+            # self._update_header(latest_map, new_key)
             self._print_stats(latest_map)
 
     def write_config(self, name: str, config_dict: Dict[str, Any], step: int):

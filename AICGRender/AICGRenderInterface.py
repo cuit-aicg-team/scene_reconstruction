@@ -514,7 +514,7 @@ class OutdoorsceneReconstruction:
             gaussian_model_path = default_outdoor_model_out_path
         if point_path_in is None:
             point_path_in = self.__point_creator.outdir if self.__point_creator.outdir is not None else default_point_out_path
-        OutdoorNewViewRender.run(point_path_in,gaussian_model_path,save_output_path)
+        OutdoorNewViewRender.run(point_path_in,gaussian_model_path)
         pass
 
     def aicg_outdoor_mesh_reconstruct(self, point_path_in=None, depth_images_in=None, save_output_path=None, iteration=30000, recon_data: ReconstructData = None):
@@ -535,7 +535,8 @@ class OutdoorsceneReconstruction:
         if save_output_path is None:
             save_output_path = default_outdoor_model_out_path
 
-             
+        if recon_data is None:
+            recon_data = ReconstructData()
         OutdoorReconstruction.run(point_path_in,save_output_path,iteration,skip_train=recon_data.skip_train,trained_model_path=recon_data.trained_model_path,load_iteration=recon_data.load_iteration)
         pass
 
@@ -625,6 +626,8 @@ class IndoorsceneReconstruction:
         if image_path_in is None:
             print("Please input image path")
             return 
+        if recon_data is None:
+            recon_data = ReconstructData()
         sence_type = self.__style_dealer.sence_type
         save_output_path,default_deal_style_out_path,default_model_out_path,default_texture_out_path = self.__style_dealer.unified_output_format(save_output_path,default_indoor_model_out_path)
 
@@ -736,6 +739,8 @@ class ObjectReconstruction:
         if image_path_in is None:
             print("Please input image path")
             return
+        if recon_data is None:
+            recon_data = ReconstructData()
         sence_type = self.__style_dealer.sence_type
 
         save_output_path, default_deal_style_out_path, default_model_out_path, default_texture_out_path = self.__style_dealer.unified_output_format(
@@ -756,6 +761,6 @@ class ObjectReconstruction:
                 return
          
         print("save_output_path",save_output_path)
-        # ExtractMesh.entrypoint(default_model_out_path,save_output_path,sence_type,load_iteration = recon_data.load_iteration)
+        ExtractMesh.entrypoint(default_model_out_path,save_output_path,sence_type,load_iteration = recon_data.load_iteration)
         ExtractTextureMesh.entrypoint(default_model_out_path,save_output_path,default_texture_out_path,load_iteration = recon_data.load_iteration)
         pass
